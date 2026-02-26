@@ -1,0 +1,46 @@
+# Service Account Credentials - NEVER COMMIT THESE
+service_account.json
+*-service-account.json
+
+# Streamlit Secrets
+.streamlit/secrets.toml
+.streamlit/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual Environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Claude Code
+.claude/
