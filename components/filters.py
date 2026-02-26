@@ -1,4 +1,4 @@
-"""Sidebar and inline filter components."""
+"""Sidebar filter components."""
 
 import streamlit as st
 
@@ -16,27 +16,32 @@ def render_category_product_filters(df):
 
         if selected_category != "All Categories":
             available = sorted(df[df["Category"] == selected_category]["Description"].unique())
+            product_label = f"All Products in {selected_category}"
         else:
             available = sorted(df["Description"].unique())
+            product_label = "All Products"
+
         selected_product = st.selectbox(
             "Product",
-            options=["All Products"] + available,
+            options=[product_label] + available,
             index=0,
             key="main_product_filter",
         )
 
+        # Normalize display-friendly label back to code-friendly sentinel
+        if selected_product.startswith("All Products"):
+            selected_product = "All Products"
+
     return selected_category, selected_product
 
 
+# DEPRECATED — will be removed when app.py is rewritten (Task 7)
 def render_day_of_week_filter(days_span):
     """Render the day-of-week filter in sidebar. Returns (day_filter_mode, selected_days)."""
     selected_days = None
 
     if days_span < 7:
-        if "day_filter_mode" not in st.session_state:
-            st.session_state.day_filter_mode = "All Days"
-        else:
-            st.session_state.day_filter_mode = "All Days"
+        st.session_state.day_filter_mode = "All Days"
         return "All Days", None
 
     with st.sidebar:
@@ -68,10 +73,7 @@ def render_day_of_week_filter(days_span):
                 fri = st.checkbox("Fri", value=True, key="fri")
                 sat = st.checkbox("Sat", value=True, key="sat")
                 sun = st.checkbox("Sun", value=True, key="sun")
-            selected_days = []
-            for i, checked in enumerate([mon, tue, wed, thu, fri, sat, sun]):
-                if checked:
-                    selected_days.append(i)
+            selected_days = [i for i, checked in enumerate([mon, tue, wed, thu, fri, sat, sun]) if checked]
 
     return st.session_state.day_filter_mode, selected_days
 
@@ -98,7 +100,17 @@ def render_hour_range_filter(df):
     return hour_range
 
 
-def apply_filters(df, selected_category, selected_product, day_filter_mode, selected_days, hour_range):
+def render_reset_filters():
+    """Render a 'Reset Filters' button in the sidebar."""
+    with st.sidebar:
+        if st.button("Reset Filters", key="reset_all_filters", use_container_width=True):
+            keys_to_clear = [k for k in st.session_state if "filter" in k or k == "hour_range_slider"]
+            for key in keys_to_clear:
+                del st.session_state[key]
+            st.rerun()
+
+
+def apply_filters(df, selected_category, selected_product, day_filter_mode="All Days", selected_days=None, hour_range=(0, 23)):
     """Apply all active filters to the dataframe. Returns filtered df."""
     filtered = df.copy()
 
@@ -110,6 +122,7 @@ def apply_filters(df, selected_category, selected_product, day_filter_mode, sele
     if selected_product != "All Products":
         filtered = filtered[filtered["Description"] == selected_product]
 
+    # DEPRECATED day filtering — kept for backward compat until app.py rewrite
     if day_filter_mode == "Weekdays":
         filtered = filtered[filtered["Date"].dt.dayofweek < 5]
     elif day_filter_mode == "Weekends":
@@ -120,8 +133,8 @@ def apply_filters(df, selected_category, selected_product, day_filter_mode, sele
     return filtered
 
 
-def render_filter_summary(filtered_df, selected_category, selected_product, day_filter_mode, selected_days):
-    """Show a compact filter summary in the main area when filters are active."""
+def render_filter_summary(filtered_df, selected_category, selected_product, day_filter_mode="All Days", selected_days=None):
+    """Show a compact filter summary when filters are active."""
     any_filter = (
         selected_category != "All Categories"
         or selected_product != "All Products"
@@ -145,13 +158,4 @@ def render_filter_summary(filtered_df, selected_category, selected_product, day_
     unique_days = filtered_df["Date"].nunique() if not filtered_df.empty else 0
     num_transactions = len(filtered_df)
 
-    filter_col, reset_col = st.columns([5, 1])
-    with filter_col:
-        st.caption(f"Filtered: {' | '.join(parts)} ({unique_days} days, {num_transactions:,} rows)")
-    with reset_col:
-        if st.button("Reset", key="reset_filters", use_container_width=True):
-            for key in list(st.session_state.keys()):
-                if "filter" in key or key in ("mon", "tue", "wed", "thu", "fri", "sat", "sun",
-                                               "day_filter_mode", "day_filter_radio"):
-                    del st.session_state[key]
-            st.rerun()
+    st.caption(f"Filtered: {' | '.join(parts)} ({unique_days} days, {num_transactions:,} rows)")
