@@ -57,6 +57,13 @@ MONTH_NAMES = [
 AVERAGE_DAY_ROLLING_WINDOW = 4  # weeks for trend moving average
 CHART_CONFIDENCE_BAND = "rgba(125, 133, 112, 0.2)"  # std deviation band fill
 
+# Insight engine thresholds
+INSIGHT_TREND_MIN_DAYS = 21       # need 21+ days for trend insights
+INSIGHT_SLOW_MOVER_MIN_DAYS = 7   # need 7+ days for slow mover callout
+INSIGHT_SLOW_MOVER_THRESHOLD = 5  # products averaging < $5/day are "slow"
+INSIGHT_TOP_PRODUCTS = 8          # number of products in "What's Selling"
+INSIGHT_WEEKLY_AGGREGATE_DAYS = 15  # 15+ days → aggregate to weekly bars
+
 # Cache TTL (seconds)
 FILE_LIST_CACHE_TTL = 600   # 10 minutes
 DATA_CACHE_TTL = 3600       # 1 hour
