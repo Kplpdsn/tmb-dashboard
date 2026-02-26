@@ -18,10 +18,6 @@ BASKET_VALUE_LABELS = ["$0-15", "$15-30", "$30-50", "$50-100", "$100+"]
 BASKET_ITEM_BINS = [0, 1, 3, 5, 10, 1000]
 BASKET_ITEM_LABELS = ["1", "2-3", "4-5", "6-10", "10+"]
 
-# Analysis mode thresholds (days)
-DAILY_MAX_DAYS = 1
-WEEKLY_MAX_DAYS = 14
-
 # Chart colors
 CHART_PRIMARY = "#7D8570"
 CHART_SECONDARY = "#8B9A82"

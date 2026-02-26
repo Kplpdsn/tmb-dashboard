@@ -5,25 +5,25 @@ Main entry point. Run with: streamlit run app.py
 
 import streamlit as st
 
-from config import TMB_SALES_FOLDER_ID, DAILY_MAX_DAYS, WEEKLY_MAX_DAYS
+from config import TMB_SALES_FOLDER_ID
 from styles import MAIN_CSS
 from services.gdrive import get_service
 from components.header import render_header, render_date_banner
 from components.date_picker import render_date_picker
 from components.filters import (
     render_category_product_filters,
-    render_day_of_week_filter,
     render_hour_range_filter,
+    render_reset_filters,
     apply_filters,
     render_filter_summary,
 )
-from views import daily, weekly, monthly, basket, compare, average_day
+from views import dashboard, basket, compare, average_day
 from reports.standard import generate as generate_pdf
 from reports.average_day import generate as generate_avg_day_pdf
 
 
 # --- Page Config ---
-st.set_page_config(page_title="Three Mills Analytics Pro", layout="wide", page_icon="🥖")
+st.set_page_config(page_title="Three Mills Analytics Pro", layout="wide", page_icon="\U0001F950")
 st.markdown(MAIN_CSS, unsafe_allow_html=True)
 
 # --- Header ---
@@ -78,64 +78,31 @@ if "df" in st.session_state and not st.session_state.df.empty:
 
     if st.button("Change Date Range", type="secondary"):
         del st.session_state.df
-        if "data_loaded" in st.session_state:
-            del st.session_state.data_loaded
+        for key in ("data_loaded", "active_tool"):
+            if key in st.session_state:
+                del st.session_state[key]
         st.rerun()
 
     st.markdown("---")
 
-    # --- Mode Selector ---
-    if "analysis_view_mode" not in st.session_state:
-        st.session_state.analysis_view_mode = "Sales Overview"
-
-    # Migrate old mode names
-    _mode_migration = {
-        "Simple Analysis": "Sales Overview",
-        "Compare Periods": "Compare",
-        "Basket Analysis": "What Sells Together",
-        "Average Day": "Typical Day",
-    }
-    if st.session_state.analysis_view_mode in _mode_migration:
-        st.session_state.analysis_view_mode = _mode_migration[st.session_state.analysis_view_mode]
-
-    if st.button(
-        "Sales Overview", use_container_width=True,
-        type="primary" if st.session_state.analysis_view_mode == "Sales Overview" else "secondary",
-    ):
-        st.session_state.analysis_view_mode = "Sales Overview"
-        st.rerun()
-
-    with st.expander("More Analysis Modes", expanded=False):
-        ec1, ec2, ec3 = st.columns(3)
-        extra_modes = ["Compare", "What Sells Together", "Typical Day"]
-        for col, label in zip([ec1, ec2, ec3], extra_modes):
-            with col:
-                if st.button(
-                    label, use_container_width=True,
-                    type="primary" if st.session_state.analysis_view_mode == label else "secondary",
-                ):
-                    st.session_state.analysis_view_mode = label
-                    st.rerun()
-
-    mode = st.session_state.analysis_view_mode
-
-    # --- Filters ---
+    # --- Sidebar Filters ---
     selected_category, selected_product = render_category_product_filters(df)
-
-    # Average Day mode: skip day-of-week filter (user picks the day directly), add month filter
-    selected_months = None
-    if mode == "Typical Day":
-        day_filter_mode, selected_days = "All Days", None
-    else:
-        day_filter_mode, selected_days = render_day_of_week_filter(days_span)
-
     hour_range = render_hour_range_filter(df)
+    render_reset_filters()
 
-    # Apply filters (category, product, day-of-week, hour)
-    filtered_df = apply_filters(df, selected_category, selected_product, day_filter_mode, selected_days, hour_range)
+    # Apply filters (category, product, hour)
+    filtered_df = apply_filters(df, selected_category, selected_product, hour_range=hour_range)
 
-    # --- Average Day specific controls ---
-    if mode == "Typical Day":
+    # --- Route to view ---
+    active_tool = st.session_state.get("active_tool")
+
+    if active_tool == "Typical Day":
+        # Back button
+        if st.button("\u2190 Back to Dashboard"):
+            del st.session_state.active_tool
+            st.rerun()
+
+        # --- Typical Day specific controls ---
         from config import DAY_NAMES_ORDERED, MONTH_NAMES
 
         st.markdown("---")
@@ -162,12 +129,6 @@ if "df" in st.session_state and not st.session_state.df.empty:
             else:
                 selected_months = None  # All months = no filter
 
-    # Filter summary
-    if mode != "Typical Day":
-        render_filter_summary(filtered_df, selected_category, selected_product, day_filter_mode, selected_days)
-
-    # --- Route to view ---
-    if mode == "Typical Day":
         # Check sample size
         day_instances = filtered_df[filtered_df["DayName"] == selected_day]["Date"].dt.date.nunique()
         if day_instances < 4:
@@ -175,67 +136,57 @@ if "df" in st.session_state and not st.session_state.df.empty:
                 f"Only **{day_instances}** {selected_day}(s) found in loaded data. "
                 f"Load a wider date range for more accurate averages."
             )
+
         average_day.render(filtered_df, selected_day, selected_category, selected_months)
 
-    elif mode == "Compare":
+    elif active_tool == "Compare":
+        # Back button
+        if st.button("\u2190 Back to Dashboard"):
+            del st.session_state.active_tool
+            st.rerun()
+
         compare.render(
             service, st.session_state.folder_id,
             min_date.date(), max_date.date(),
-            selected_category, selected_product, day_filter_mode, selected_days,
+            selected_category, selected_product,
         )
 
-    elif mode == "What Sells Together":
-        # Filtered basket warning
+    elif active_tool == "Baskets":
+        # Back button
+        if st.button("\u2190 Back to Dashboard"):
+            del st.session_state.active_tool
+            st.rerun()
+
+        # Basket filter warning
         any_filter = (
             selected_category != "All Categories"
             or selected_product != "All Products"
-            or day_filter_mode != "All Days"
         )
         if any_filter:
-            if day_filter_mode != "All Days":
-                st.warning(
-                    f"**Weekday Filtering Active:** Basket analysis with **{day_filter_mode}** "
-                    f"filter may not show full customer behavior. "
-                    f"Use 'All Days' for comprehensive basket analysis."
-                )
-            else:
-                parts = []
-                if selected_category != "All Categories":
-                    parts.append(selected_category)
-                if selected_product != "All Products":
-                    parts.append(selected_product)
-                st.warning(
-                    f"**Filtered View Active:** {' | '.join(parts)}. "
-                    f"Baskets may contain other products not shown."
-                )
+            parts = []
+            if selected_category != "All Categories":
+                parts.append(selected_category)
+            if selected_product != "All Products":
+                parts.append(selected_product)
+            st.warning(
+                f"**Filtered View Active:** {' | '.join(parts)}. "
+                f"Baskets may contain other products not shown."
+            )
+
         basket.render(filtered_df)
 
     else:
-        # Simple Analysis - auto-detect mode
-        if days_span <= DAILY_MAX_DAYS:
-            analysis_mode = "Daily"
-        elif days_span <= WEEKLY_MAX_DAYS:
-            analysis_mode = "Weekly"
-        else:
-            analysis_mode = "Monthly"
-
-        mode_emoji = {"Daily": "📆", "Weekly": "📊", "Monthly": "📑"}
-        st.markdown(f"## {mode_emoji[analysis_mode]} {analysis_mode} Analysis")
-
-        if analysis_mode == "Daily":
-            daily.render(filtered_df, min_date, selected_category, full_df=df)
-        elif analysis_mode == "Weekly":
-            weekly.render(filtered_df, min_date, max_date, selected_category)
-        else:
-            monthly.render(filtered_df, min_date, max_date, selected_category, selected_product)
+        # Default: unified dashboard
+        render_filter_summary(filtered_df, selected_category, selected_product)
+        dashboard.render(filtered_df, selected_category, selected_product)
 
     # --- Export (at bottom, after view content) ---
-    if mode != "Compare":  # Compare mode has its own export
+    if active_tool != "Compare":  # Compare mode has its own export
         with st.expander("Export & Download", expanded=False):
             export_cols = st.columns([1, 1, 1])
 
             with export_cols[0]:
-                if mode == "Typical Day":
+                if active_tool == "Typical Day":
                     if st.button("Generate Average Day PDF", type="primary", use_container_width=True):
                         with st.spinner("Generating Average Day PDF..."):
                             try:
@@ -263,7 +214,7 @@ if "df" in st.session_state and not st.session_state.df.empty:
                             try:
                                 pdf_buf = generate_pdf(
                                     filtered_df, min_date, max_date,
-                                    selected_category, selected_product, day_filter_mode, hour_range,
+                                    selected_category, selected_product, "All Days", hour_range,
                                 )
                                 date_str = f"{min_date.strftime('%Y%m%d')}_{max_date.strftime('%Y%m%d')}"
                                 st.download_button(
@@ -317,8 +268,8 @@ elif service and st.session_state.get("folder_id"):
 else:
     st.markdown("### What You Can Do:")
     feat = [
-        ("Smart Analytics", "Daily, weekly & monthly views with automatic insights"),
-        ("Average Day Model", "Model a typical Monday, Tuesday, etc. from historical data"),
+        ("Morning Brief", "Revenue, trends & what's selling \u2014 all on one page"),
+        ("Typical Day Model", "Model a typical Monday, Tuesday, etc. from historical data"),
         ("Period Compare", "Side-by-side comparison of any two time periods"),
     ]
     cols = st.columns(3)
