@@ -1,3 +1,5 @@
+# DEPRECATED: This view has been merged into views/dashboard.py.
+# Kept for reference — will be removed in a future cleanup.
 """Weekly analysis view (2-14 days of data)."""
 
 import plotly.express as px

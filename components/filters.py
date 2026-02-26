@@ -35,49 +35,6 @@ def render_category_product_filters(df):
     return selected_category, selected_product
 
 
-# DEPRECATED — will be removed when app.py is rewritten (Task 7)
-def render_day_of_week_filter(days_span):
-    """Render the day-of-week filter in sidebar. Returns (day_filter_mode, selected_days)."""
-    selected_days = None
-
-    if days_span < 7:
-        st.session_state.day_filter_mode = "All Days"
-        return "All Days", None
-
-    with st.sidebar:
-        if "day_filter_mode" not in st.session_state:
-            st.session_state.day_filter_mode = "All Days"
-
-        day_options = ["All Days", "Weekdays", "Weekends", "Custom"]
-        current_idx = day_options.index(st.session_state.day_filter_mode) if st.session_state.day_filter_mode in day_options else 0
-        day_filter_mode = st.radio(
-            "Day Filter",
-            options=day_options,
-            index=current_idx,
-            key="day_filter_radio",
-            horizontal=True,
-        )
-        if day_filter_mode != st.session_state.day_filter_mode:
-            st.session_state.day_filter_mode = day_filter_mode
-            st.rerun()
-
-        if st.session_state.day_filter_mode == "Custom":
-            st.markdown("**Select days:**")
-            lc, rc = st.columns(2)
-            with lc:
-                mon = st.checkbox("Mon", value=True, key="mon")
-                tue = st.checkbox("Tue", value=True, key="tue")
-                wed = st.checkbox("Wed", value=True, key="wed")
-                thu = st.checkbox("Thu", value=True, key="thu")
-            with rc:
-                fri = st.checkbox("Fri", value=True, key="fri")
-                sat = st.checkbox("Sat", value=True, key="sat")
-                sun = st.checkbox("Sun", value=True, key="sun")
-            selected_days = [i for i, checked in enumerate([mon, tue, wed, thu, fri, sat, sun]) if checked]
-
-    return st.session_state.day_filter_mode, selected_days
-
-
 def render_hour_range_filter(df):
     """Render the hour-range slider in sidebar. Returns (start_hour, end_hour) tuple."""
     with st.sidebar:
@@ -110,7 +67,7 @@ def render_reset_filters():
             st.rerun()
 
 
-def apply_filters(df, selected_category, selected_product, day_filter_mode="All Days", selected_days=None, hour_range=(0, 23)):
+def apply_filters(df, selected_category, selected_product, hour_range=(0, 23)):
     """Apply all active filters to the dataframe. Returns filtered df."""
     filtered = df.copy()
 
@@ -122,23 +79,14 @@ def apply_filters(df, selected_category, selected_product, day_filter_mode="All 
     if selected_product != "All Products":
         filtered = filtered[filtered["Description"] == selected_product]
 
-    # DEPRECATED day filtering — kept for backward compat until app.py rewrite
-    if day_filter_mode == "Weekdays":
-        filtered = filtered[filtered["Date"].dt.dayofweek < 5]
-    elif day_filter_mode == "Weekends":
-        filtered = filtered[filtered["Date"].dt.dayofweek >= 5]
-    elif day_filter_mode == "Custom" and selected_days:
-        filtered = filtered[filtered["Date"].dt.dayofweek.isin(selected_days)]
-
     return filtered
 
 
-def render_filter_summary(filtered_df, selected_category, selected_product, day_filter_mode="All Days", selected_days=None):
+def render_filter_summary(filtered_df, selected_category, selected_product):
     """Show a compact filter summary when filters are active."""
     any_filter = (
         selected_category != "All Categories"
         or selected_product != "All Products"
-        or day_filter_mode != "All Days"
     )
     if not any_filter:
         return
@@ -148,12 +96,6 @@ def render_filter_summary(filtered_df, selected_category, selected_product, day_
         parts.append(selected_category)
     if selected_product != "All Products":
         parts.append(selected_product)
-    if day_filter_mode != "All Days":
-        if day_filter_mode == "Custom" and selected_days is not None:
-            day_map = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
-            parts.append("Days: " + ", ".join(day_map[d] for d in sorted(selected_days)))
-        else:
-            parts.append(day_filter_mode)
 
     unique_days = filtered_df["Date"].nunique() if not filtered_df.empty else 0
     num_transactions = len(filtered_df)

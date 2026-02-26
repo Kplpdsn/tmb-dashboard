@@ -1,3 +1,5 @@
+# DEPRECATED: This view has been merged into views/dashboard.py.
+# Kept for reference — will be removed in a future cleanup.
 """Daily analysis view (1 day of data)."""
 
 import plotly.express as px

@@ -1,3 +1,5 @@
+# DEPRECATED: This view has been merged into views/dashboard.py.
+# Kept for reference — will be removed in a future cleanup.
 """Monthly analysis view (15+ days of data)."""
 
 import numpy as np
