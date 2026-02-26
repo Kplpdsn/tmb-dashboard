@@ -12,7 +12,7 @@ from reports.comparison import generate as generate_comparison_pdf
 
 def render(service, folder_id, current_start, current_end,
            selected_category="All Categories", selected_product="All Products",
-           day_filter_mode="All Days", selected_days=None):
+           day_filter_mode="All Days", selected_days=None, hour_range=None):
     """Render the period comparison view."""
     st.markdown("## Compare Periods")
 
@@ -128,10 +128,10 @@ def render(service, folder_id, current_start, current_end,
     st.markdown("## Comparison Results")
 
     df_a = _apply_comparison_filters(
-        st.session_state.period_a_raw, selected_category, selected_product, day_filter_mode, selected_days
+        st.session_state.period_a_raw, selected_category, selected_product, day_filter_mode, selected_days, hour_range
     )
     df_b = _apply_comparison_filters(
-        st.session_state.period_b_raw, selected_category, selected_product, day_filter_mode, selected_days
+        st.session_state.period_b_raw, selected_category, selected_product, day_filter_mode, selected_days, hour_range
     )
 
     _render_comparison_metrics(df_a, df_b)
@@ -169,9 +169,11 @@ def render(service, folder_id, current_start, current_end,
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _apply_comparison_filters(df, category, product, day_mode, days):
+def _apply_comparison_filters(df, category, product, day_mode, days, hour_range=None):
     """Apply active filters to a comparison dataframe."""
     out = df.copy()
+    if hour_range and "Hour" in out.columns:
+        out = out[(out["Hour"] >= hour_range[0]) & (out["Hour"] <= hour_range[1])]
     if category != "All Categories":
         out = out[out["Category"] == category]
     if product != "All Products":
