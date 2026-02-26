@@ -44,7 +44,7 @@ def _safe_pct(part, whole):
 # ---------------------------------------------------------------------------
 
 def _add_peak_hour(insights, day_df):
-    """Peak trading: {hour}:00 -- consider staffing up around this time.
+    """Peak trading: {hour}:00 -- busiest hour of the day.
 
     Guard: day_df must have at least one row with Revenue > 0.
     """
@@ -64,7 +64,7 @@ def _add_peak_hour(insights, day_df):
 
     insights.append(
         f"Peak trading: {peak_hour}:00 with ${peak_rev:,.0f} "
-        f"({peak_pct:.0f}% of the day) \u2014 consider staffing up around this time."
+        f"({peak_pct:.0f}% of the day)"
     )
 
 

@@ -371,7 +371,7 @@ def _build_story_bullets(ctx):
         bullets.append(
             f"Peak trading: <b>{ctx['peak_hour']}:00</b> with "
             f"${ctx['peak_rev']:,.0f} average revenue "
-            f"-- consider staffing up around this time."
+            f"-- busiest hour of the day."
         )
 
     # 2. Top seller
@@ -477,7 +477,7 @@ def _page_trading_pattern(ctx, styles):
     )]
     story += [Spacer(1, 0.15 * inch)]
     story += [Paragraph(
-        "Consider staffing based on these patterns.",
+        "These patterns reflect your typical trading hours.",
         styles["note"],
     )]
 
