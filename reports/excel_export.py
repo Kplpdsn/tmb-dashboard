@@ -116,11 +116,17 @@ def generate_avg_day_excel(filtered_df, selected_day_name, selected_category="Al
         df.groupby(["_date", "Description", "Category"], as_index=False)
         .agg(revenue=("Revenue", "sum"), quantity=("Quantity", "sum"))
     )
+    num_days = df["_date"].nunique()
     df.drop(columns="_date", inplace=True)
-    avg_product = (
+
+    # Divide by total day instances (not just days each product appeared)
+    total_product = (
         daily_product.groupby(["Description", "Category"], as_index=False)
-        .agg(avg_revenue=("revenue", "mean"), avg_quantity=("quantity", "mean"))
+        .agg(total_revenue=("revenue", "sum"), total_quantity=("quantity", "sum"))
     )
+    total_product["avg_revenue"] = total_product["total_revenue"] / num_days
+    total_product["avg_quantity"] = total_product["total_quantity"] / num_days
+    avg_product = total_product.drop(columns=["total_revenue", "total_quantity"])
 
     # Derived columns
     avg_product["avg_price"] = (
