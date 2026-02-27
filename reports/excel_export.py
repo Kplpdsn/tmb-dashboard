@@ -142,28 +142,44 @@ def generate_avg_day_excel(filtered_df, selected_day_name, selected_category="Al
         "pct_revenue": "% of Revenue",
     })
 
+    # --- Sample size context ---
+    num_instances = df["Date"].dt.date.nunique()
+    first_date = df["Date"].min().strftime("%d/%m/%Y")
+    last_date = df["Date"].max().strftime("%d/%m/%Y")
+    context_line = (
+        f"Average {selected_day_name} - {num_instances} "
+        f"instance{'s' if num_instances != 1 else ''} "
+        f"({first_date} to {last_date})"
+    )
+
     # --- Write to Excel ---
     buf = BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-        export_df.to_excel(writer, sheet_name="Avg Product Performance", index=False)
+        # Write data starting at row 3 (row 1 = context, row 2 = headers)
+        export_df.to_excel(
+            writer, sheet_name="Avg Product Performance", index=False, startrow=1,
+        )
         ws = writer.sheets["Avg Product Performance"]
+
+        # -- Context row --
+        ws.cell(row=1, column=1, value=context_line).font = Font(bold=True, italic=True)
 
         # -- Column widths --
         col_widths = {"A": 30, "B": 18, "C": 16, "D": 16, "E": 12, "F": 14}
         for letter, width in col_widths.items():
             ws.column_dimensions[letter].width = width
 
-        # -- Header styling --
+        # -- Header styling (row 2 now) --
         header_color = PDF_HEADER_BG.lstrip("#")
         header_fill = PatternFill(start_color=header_color, end_color=header_color, fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF")
-        for cell in ws[1]:
+        for cell in ws[2]:
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = Alignment(horizontal="center")
 
-        # -- Number formatting for data rows --
-        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=6):
+        # -- Number formatting for data rows (row 3 onward) --
+        for row in ws.iter_rows(min_row=3, max_row=ws.max_row, min_col=1, max_col=6):
             row[2].number_format = '$#,##0.00'    # Avg Daily Revenue
             row[3].number_format = '#,##0.0'       # Avg Daily Quantity
             row[4].number_format = '$#,##0.00'    # Avg Price
@@ -179,9 +195,9 @@ def generate_avg_day_excel(filtered_df, selected_day_name, selected_category="Al
         ws.cell(row=totals_row, column=4, value=total_avg_qty).font = bold_font
         ws.cell(row=totals_row, column=4).number_format = '#,##0.0'
 
-        # -- Freeze header row + auto-filter --
-        ws.freeze_panes = "A2"
-        ws.auto_filter.ref = f"A1:F{totals_row - 1}"
+        # -- Freeze below header + auto-filter on data --
+        ws.freeze_panes = "A3"
+        ws.auto_filter.ref = f"A2:F{totals_row - 1}"
 
     buf.seek(0)
     return buf
