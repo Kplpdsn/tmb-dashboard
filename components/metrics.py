@@ -1,7 +1,7 @@
 """Shared metric card component for the bakery dashboard.
 
 Renders revenue, transaction, and basket metrics in a consistent layout.
-Used by the dashboard view and tool views (average_day, compare, baskets).
+Used by the dashboard view and tool views (average_day, baskets).
 """
 
 import streamlit as st

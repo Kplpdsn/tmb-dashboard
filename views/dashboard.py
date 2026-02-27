@@ -5,7 +5,7 @@ Three sections:
     B. "This Period" — full loaded range overview (hidden if single day)
     C. "What's Selling" — top products, category mix, slow mover callout
 
-Below the fold: navigation buttons for Average Day, Compare, Basket tools.
+Below the fold: navigation buttons for Average Day and Basket tools.
 """
 
 import pandas as pd
@@ -365,10 +365,10 @@ def _render_category_or_product_mix(df, selected_category):
 # ---------------------------------------------------------------------------
 
 def _render_tools_nav():
-    """Three navigation buttons for Average Day, Compare, Basket tools."""
+    """Navigation buttons for Average Day and Basket tools."""
     st.markdown("### More Tools")
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
 
     with c1:
         if st.button("Model a Typical Day", use_container_width=True):
@@ -376,11 +376,6 @@ def _render_tools_nav():
             st.rerun()
 
     with c2:
-        if st.button("Compare Two Periods", use_container_width=True):
-            st.session_state.active_tool = "Compare"
-            st.rerun()
-
-    with c3:
         if st.button("Basket Patterns", use_container_width=True):
             st.session_state.active_tool = "Baskets"
             st.rerun()

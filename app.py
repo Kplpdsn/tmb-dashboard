@@ -17,7 +17,7 @@ from components.filters import (
     apply_filters,
     render_filter_summary,
 )
-from views import dashboard, basket, compare, average_day
+from views import dashboard, basket, average_day
 from reports.standard import generate as generate_pdf
 from reports.average_day import generate as generate_avg_day_pdf
 from reports.excel_export import generate_excel, generate_avg_day_excel, generate_baskets_excel
@@ -140,18 +140,6 @@ if "df" in st.session_state and not st.session_state.df.empty:
 
         average_day.render(filtered_df, selected_day, selected_category, selected_months)
 
-    elif active_tool == "Compare":
-        # Back button
-        if st.button("\u2190 Back to Dashboard"):
-            del st.session_state.active_tool
-            st.rerun()
-
-        compare.render(
-            service, st.session_state.folder_id,
-            min_date.date(), max_date.date(),
-            selected_category, selected_product,
-        )
-
     elif active_tool == "Baskets":
         # Back button
         if st.button("\u2190 Back to Dashboard"):
@@ -182,80 +170,79 @@ if "df" in st.session_state and not st.session_state.df.empty:
         dashboard.render(filtered_df, selected_category, selected_product)
 
     # --- Export (at bottom, after view content) ---
-    if active_tool != "Compare":  # Compare mode has its own export
-        with st.expander("Export & Download", expanded=False):
-            export_cols = st.columns([1, 1])
+    with st.expander("Export & Download", expanded=False):
+        export_cols = st.columns([1, 1])
 
-            with export_cols[0]:
+        with export_cols[0]:
+            if active_tool == "Typical Day":
+                if st.button("Generate Average Day PDF", type="primary", use_container_width=True):
+                    with st.spinner("Generating Average Day PDF..."):
+                        try:
+                            pdf_buf = generate_avg_day_pdf(
+                                filtered_df, selected_day, selected_category, selected_months,
+                            )
+                            st.download_button(
+                                "Download PDF", data=pdf_buf,
+                                file_name=f"TMB_Average_{selected_day}_Report.pdf",
+                                mime="application/pdf", key="avg_day_pdf",
+                            )
+                            # In-browser preview
+                            import base64
+                            b64 = base64.b64encode(pdf_buf.getvalue()).decode()
+                            st.markdown(
+                                f'<iframe src="data:application/pdf;base64,{b64}" '
+                                f'width="100%" height="500" type="application/pdf"></iframe>',
+                                unsafe_allow_html=True,
+                            )
+                        except Exception as e:
+                            st.error(f"PDF generation failed: {e}")
+            else:
+                if st.button("Generate PDF Report", type="primary", use_container_width=True):
+                    with st.spinner("Generating PDF report..."):
+                        try:
+                            pdf_buf = generate_pdf(
+                                filtered_df, min_date, max_date,
+                                selected_category, selected_product, "All Days", hour_range,
+                            )
+                            date_str = f"{min_date.strftime('%Y%m%d')}_{max_date.strftime('%Y%m%d')}"
+                            st.download_button(
+                                "Download PDF Report", data=pdf_buf,
+                                file_name=f"TMB_Report_{date_str}.pdf", mime="application/pdf",
+                                key=f"pdf_{date_str}",
+                            )
+                            # In-browser preview
+                            import base64
+                            b64 = base64.b64encode(pdf_buf.getvalue()).decode()
+                            st.markdown(
+                                f'<iframe src="data:application/pdf;base64,{b64}" '
+                                f'width="100%" height="500" type="application/pdf"></iframe>',
+                                unsafe_allow_html=True,
+                            )
+                        except Exception as e:
+                            st.error(f"PDF generation failed: {e}")
+
+        with export_cols[1]:
+            date_str = f"{min_date.strftime('%Y%m%d')}_{max_date.strftime('%Y%m%d')}"
+            try:
                 if active_tool == "Typical Day":
-                    if st.button("Generate Average Day PDF", type="primary", use_container_width=True):
-                        with st.spinner("Generating Average Day PDF..."):
-                            try:
-                                pdf_buf = generate_avg_day_pdf(
-                                    filtered_df, selected_day, selected_category, selected_months,
-                                )
-                                st.download_button(
-                                    "Download PDF", data=pdf_buf,
-                                    file_name=f"TMB_Average_{selected_day}_Report.pdf",
-                                    mime="application/pdf", key="avg_day_pdf",
-                                )
-                                # In-browser preview
-                                import base64
-                                b64 = base64.b64encode(pdf_buf.getvalue()).decode()
-                                st.markdown(
-                                    f'<iframe src="data:application/pdf;base64,{b64}" '
-                                    f'width="100%" height="500" type="application/pdf"></iframe>',
-                                    unsafe_allow_html=True,
-                                )
-                            except Exception as e:
-                                st.error(f"PDF generation failed: {e}")
-                else:
-                    if st.button("Generate PDF Report", type="primary", use_container_width=True):
-                        with st.spinner("Generating PDF report..."):
-                            try:
-                                pdf_buf = generate_pdf(
-                                    filtered_df, min_date, max_date,
-                                    selected_category, selected_product, "All Days", hour_range,
-                                )
-                                date_str = f"{min_date.strftime('%Y%m%d')}_{max_date.strftime('%Y%m%d')}"
-                                st.download_button(
-                                    "Download PDF Report", data=pdf_buf,
-                                    file_name=f"TMB_Report_{date_str}.pdf", mime="application/pdf",
-                                    key=f"pdf_{date_str}",
-                                )
-                                # In-browser preview
-                                import base64
-                                b64 = base64.b64encode(pdf_buf.getvalue()).decode()
-                                st.markdown(
-                                    f'<iframe src="data:application/pdf;base64,{b64}" '
-                                    f'width="100%" height="500" type="application/pdf"></iframe>',
-                                    unsafe_allow_html=True,
-                                )
-                            except Exception as e:
-                                st.error(f"PDF generation failed: {e}")
-
-            with export_cols[1]:
-                date_str = f"{min_date.strftime('%Y%m%d')}_{max_date.strftime('%Y%m%d')}"
-                try:
-                    if active_tool == "Typical Day":
-                        excel_buf = generate_avg_day_excel(
-                            filtered_df, selected_day, selected_category, selected_months,
-                        )
-                        excel_name = f"TMB_Avg_{selected_day}_{date_str}.xlsx"
-                    elif active_tool == "Baskets":
-                        excel_buf = generate_baskets_excel(filtered_df)
-                        excel_name = f"TMB_Baskets_{date_str}.xlsx"
-                    else:
-                        excel_buf = generate_excel(filtered_df, min_date, max_date)
-                        excel_name = f"TMB_Product_Sales_{date_str}.xlsx"
-                    st.download_button(
-                        "Download Excel", data=excel_buf,
-                        file_name=excel_name,
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key="excel_export", use_container_width=True,
+                    excel_buf = generate_avg_day_excel(
+                        filtered_df, selected_day, selected_category, selected_months,
                     )
-                except Exception as e:
-                    st.error(f"Excel generation failed: {e}")
+                    excel_name = f"TMB_Avg_{selected_day}_{date_str}.xlsx"
+                elif active_tool == "Baskets":
+                    excel_buf = generate_baskets_excel(filtered_df)
+                    excel_name = f"TMB_Baskets_{date_str}.xlsx"
+                else:
+                    excel_buf = generate_excel(filtered_df, min_date, max_date)
+                    excel_name = f"TMB_Product_Sales_{date_str}.xlsx"
+                st.download_button(
+                    "Download Excel", data=excel_buf,
+                    file_name=excel_name,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="excel_export", use_container_width=True,
+                )
+            except Exception as e:
+                st.error(f"Excel generation failed: {e}")
 
 
 # =====================================================================
@@ -273,9 +260,8 @@ else:
     feat = [
         ("Morning Brief", "Revenue, trends & what's selling \u2014 all on one page"),
         ("Typical Day Model", "Model a typical Monday, Tuesday, etc. from historical data"),
-        ("Period Compare", "Side-by-side comparison of any two time periods"),
     ]
-    cols = st.columns(3)
+    cols = st.columns(2)
     for col, (title, desc) in zip(cols, feat):
         with col:
             st.markdown(

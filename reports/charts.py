@@ -1,7 +1,7 @@
 """Shared PDF chart rendering functions for ReportLab reports.
 
 Each function returns a ReportLab Drawing object ready to be added to a
-platypus story. Extracted from standard.py, average_day.py, and comparison.py
+platypus story. Extracted from standard.py and average_day.py
 to eliminate duplicated chart-building code.
 """
 
