@@ -321,14 +321,6 @@ def _page_revenue_detail(story, sty, df, min_date, max_date, days_span):
                 ))
             story.append(_styled_table(table_data, [2 * inch, 2.5 * inch, 2 * inch]))
 
-    # Connecting caption
-    daily_avg = total_rev / max(days_span, 1)
-    story.append(Spacer(1, 0.1 * inch))
-    story.append(Paragraph(
-        f"Total: ${total_rev:,.2f} across {days_span} day{'s' if days_span != 1 else ''} "
-        f"(${daily_avg:,.0f}/day average).",
-        sty["caption"],
-    ))
 
 
 def _page_product_performance(story, sty, df):
