@@ -20,6 +20,7 @@ from components.filters import (
 from views import dashboard, basket, compare, average_day
 from reports.standard import generate as generate_pdf
 from reports.average_day import generate as generate_avg_day_pdf
+from reports.excel_export import generate_excel
 
 
 # --- Page Config ---
@@ -183,7 +184,7 @@ if "df" in st.session_state and not st.session_state.df.empty:
     # --- Export (at bottom, after view content) ---
     if active_tool != "Compare":  # Compare mode has its own export
         with st.expander("Export & Download", expanded=False):
-            export_cols = st.columns([1, 1, 1])
+            export_cols = st.columns([1, 1])
 
             with export_cols[0]:
                 if active_tool == "Typical Day":
@@ -234,25 +235,17 @@ if "df" in st.session_state and not st.session_state.df.empty:
                                 st.error(f"PDF generation failed: {e}")
 
             with export_cols[1]:
-                csv_data = filtered_df.to_csv(index=False).encode("utf-8")
                 date_str = f"{min_date.strftime('%Y%m%d')}_{max_date.strftime('%Y%m%d')}"
-                st.download_button(
-                    "Download CSV", data=csv_data,
-                    file_name=f"TMB_Data_{date_str}.csv", mime="text/csv",
-                    key="csv_export", use_container_width=True,
-                )
-
-            with export_cols[2]:
-                from io import BytesIO
-                excel_buf = BytesIO()
-                filtered_df.to_excel(excel_buf, index=False, engine="openpyxl")
-                excel_buf.seek(0)
-                st.download_button(
-                    "Download Excel", data=excel_buf,
-                    file_name=f"TMB_Data_{date_str}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="excel_export", use_container_width=True,
-                )
+                try:
+                    excel_buf = generate_excel(filtered_df, min_date, max_date)
+                    st.download_button(
+                        "Download Excel", data=excel_buf,
+                        file_name=f"TMB_Product_Sales_{date_str}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="excel_export", use_container_width=True,
+                    )
+                except Exception as e:
+                    st.error(f"Excel generation failed: {e}")
 
 
 # =====================================================================
