@@ -4,6 +4,7 @@ Main entry point. Run with: streamlit run app.py
 """
 
 import streamlit as st
+import base64
 
 from config import TMB_SALES_FOLDER_ID
 from styles import MAIN_CSS
@@ -187,7 +188,6 @@ if "df" in st.session_state and not st.session_state.df.empty:
                                 mime="application/pdf", key="avg_day_pdf",
                             )
                             # In-browser preview
-                            import base64
                             b64 = base64.b64encode(pdf_buf.getvalue()).decode()
                             st.markdown(
                                 f'<iframe src="data:application/pdf;base64,{b64}" '
@@ -211,7 +211,6 @@ if "df" in st.session_state and not st.session_state.df.empty:
                                 key=f"pdf_{date_str}",
                             )
                             # In-browser preview
-                            import base64
                             b64 = base64.b64encode(pdf_buf.getvalue()).decode()
                             st.markdown(
                                 f'<iframe src="data:application/pdf;base64,{b64}" '

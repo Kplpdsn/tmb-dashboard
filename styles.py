@@ -131,10 +131,6 @@ div[data-testid="stHorizontalBlock"] {
     background-color: var(--bg-primary) !important;
 }
 
-[data-testid="stSidebar"] .st-emotion-cache-16txtl3 {
-    color: var(--text-primary) !important;
-}
-
 [data-testid="stSidebar"] [data-baseweb="select"] {
     color: var(--text-primary) !important;
 }
