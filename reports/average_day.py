@@ -12,7 +12,7 @@ from io import BytesIO
 import numpy as np
 import pandas as pd
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
@@ -21,8 +21,12 @@ from reportlab.platypus import (
 )
 
 from config import (
-    PDF_HEADER_BG, PDF_TEXT_PRIMARY, PDF_BORDER, PDF_POSITIVE, PDF_NEGATIVE,
+    PDF_HEADER_BG, PDF_BORDER, PDF_POSITIVE, PDF_NEGATIVE,
     PIE_COLORS, MONTH_NAMES, DAY_NAMES_ORDERED, AVERAGE_DAY_ROLLING_WINDOW,
+)
+from reports.pdf_styles import (
+    DARK, BORDER, MUTED,
+    build_base_styles, styled_table,
 )
 from reports.charts import (
     render_horizontal_bar_chart,
@@ -84,48 +88,37 @@ def generate(df, selected_day_name, selected_category="All Categories", selected
 # ---------------------------------------------------------------------------
 
 def _build_styles():
-    """Return a dict of ParagraphStyles used throughout the report."""
+    """Return styles for the Average Day report, extending base styles."""
+    styles = build_base_styles()
     base = getSampleStyleSheet()
-
-    return {
-        "title": ParagraphStyle(
-            "CustomTitle", parent=base["Heading1"], fontSize=22,
-            textColor=colors.HexColor(PDF_TEXT_PRIMARY), spaceAfter=6,
-            alignment=TA_CENTER, fontName="Helvetica-Bold",
-        ),
-        "subtitle": ParagraphStyle(
-            "Subtitle", parent=base["Heading2"], fontSize=13,
-            textColor=colors.HexColor("#6B7280"), spaceAfter=4,
-            alignment=TA_CENTER, fontName="Helvetica",
-        ),
-        "heading": ParagraphStyle(
-            "CustomHeading", parent=base["Heading2"], fontSize=14,
-            textColor=colors.HexColor(PDF_TEXT_PRIMARY), spaceAfter=10,
-            spaceBefore=16, fontName="Helvetica-Bold",
-        ),
-        "headline": ParagraphStyle(
-            "Headline", parent=base["Normal"], fontSize=12,
-            textColor=colors.HexColor(PDF_TEXT_PRIMARY), spaceAfter=14,
-            spaceBefore=10, fontName="Helvetica", leading=18,
-            leftIndent=10, rightIndent=10,
-        ),
-        "insight": ParagraphStyle(
-            "Insight", parent=base["Normal"], fontSize=10,
-            leftIndent=10, rightIndent=10, spaceAfter=6, spaceBefore=2,
-            backColor=colors.HexColor("#F0F4EF"), borderPadding=6,
-            borderWidth=1, borderColor=colors.HexColor(PDF_BORDER),
-        ),
-        "body": base["Normal"],
-        "note": ParagraphStyle(
-            "Note", parent=base["Normal"], fontSize=10,
-            textColor=colors.HexColor("#6B7280"), spaceAfter=10,
-        ),
-        "footer_note": ParagraphStyle(
-            "FooterNote", parent=base["Normal"], fontSize=10,
-            textColor=colors.HexColor("#9CA3AF"), spaceBefore=20,
-            alignment=TA_CENTER, fontName="Helvetica-Oblique",
-        ),
-    }
+    # Average Day uses centered title and subtitle
+    styles["title"] = ParagraphStyle(
+        "ATitle", parent=base["Heading1"], fontSize=22,
+        textColor=DARK, spaceAfter=6,
+        alignment=TA_CENTER, fontName="Helvetica-Bold",
+    )
+    styles["subtitle"] = ParagraphStyle(
+        "ASub", parent=base["Heading2"], fontSize=13,
+        textColor=MUTED, spaceAfter=4,
+        alignment=TA_CENTER, fontName="Helvetica",
+    )
+    styles["heading"] = styles["section"]
+    styles["insight"] = ParagraphStyle(
+        "AInsight", parent=base["Normal"], fontSize=10,
+        leftIndent=10, rightIndent=10, spaceAfter=6, spaceBefore=2,
+        backColor=colors.HexColor("#F0F4EF"), borderPadding=6,
+        borderWidth=1, borderColor=BORDER,
+    )
+    styles["note"] = ParagraphStyle(
+        "ANote", parent=base["Normal"], fontSize=10,
+        textColor=MUTED, spaceAfter=10,
+    )
+    styles["footer_note"] = ParagraphStyle(
+        "AFooter", parent=base["Normal"], fontSize=10,
+        textColor=colors.HexColor("#9CA3AF"), spaceBefore=20,
+        alignment=TA_CENTER, fontName="Helvetica-Oblique",
+    )
+    return styles
 
 
 # ---------------------------------------------------------------------------
@@ -517,9 +510,10 @@ def _page_trading_pattern(ctx, styles):
             f"${daily_totals['AvgBasketValue'].median():,.2f}" if n else "N/A",
         ],
     ]
-    story += [_styled_table(
+    story += [styled_table(
         metrics_data,
         [1.2 * inch, 1 * inch, 0.9 * inch, 0.9 * inch, 0.9 * inch, 0.9 * inch],
+        compact=True,
     )]
 
     return story
@@ -580,7 +574,7 @@ def _page_product_performance(ctx, day_df, styles):
             f"{row['AvgDailyUnits']:,.0f}",
             f"{row['PctOfDay']:,.1f}%",
         ])
-    story += [_styled_table(best_rows, [2.8 * inch, 1.2 * inch, 1 * inch, 1 * inch])]
+    story += [styled_table(best_rows, [2.8 * inch, 1.2 * inch, 1 * inch, 1 * inch], compact=True)]
 
     return story
 
@@ -663,9 +657,10 @@ def _page_conditional(ctx, day_df, df, selected_day_name, styles):
                 f"{int(row['Instances'])}",
                 f"{sign}{vs_overall:,.1f}%",
             ])
-        story += [_styled_table(
+        story += [styled_table(
             season_rows,
             [1.5 * inch, 1.5 * inch, 1 * inch, 1.2 * inch],
+            compact=True,
         )]
         story += [Spacer(1, 0.3 * inch)]
 
@@ -704,9 +699,10 @@ def _page_conditional(ctx, day_df, df, selected_day_name, styles):
                 f"{int(row['Instances'])}",
             ])
 
-        comp_table = _styled_table(
+        comp_table = styled_table(
             comp_rows,
             [0.6 * inch, 1.3 * inch, 1.2 * inch, 1 * inch, 1 * inch, 0.8 * inch],
+            compact=True,
         )
         # Highlight selected day's row
         for i, row_data in enumerate(comp_rows[1:], start=1):
@@ -747,31 +743,3 @@ def _page_conditional(ctx, day_df, df, selected_day_name, styles):
         return []
 
     return story
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _styled_table(data, col_widths):
-    """Create a consistently styled table."""
-    t = Table(data, colWidths=col_widths)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(PDF_HEADER_BG)),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("ALIGN", (0, 0), (0, -1), "LEFT"),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 9),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-        ("TOPPADDING", (0, 0), (-1, 0), 8),
-        ("BACKGROUND", (0, 1), (-1, -1), colors.white),
-        ("GRID", (0, 0), (-1, -1), 1, colors.HexColor(PDF_BORDER)),
-        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-        ("FONTSIZE", (0, 1), (-1, -1), 9),
-        ("TOPPADDING", (0, 1), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-    ]))
-    return t

@@ -10,21 +10,22 @@ from io import BytesIO
 from itertools import combinations
 
 import pandas as pd
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
-    Table,
-    TableStyle,
 )
 
-from config import PDF_HEADER_BG, PDF_TEXT_PRIMARY, PDF_BORDER, PIE_COLORS
+from config import PIE_COLORS
+from reports.pdf_styles import (
+    DARK as _DARK, HEADER_BG as _HEADER_BG, BORDER as _BORDER,
+    MUTED as _MUTED, LIGHT_BG as _LIGHT_BG,
+    build_base_styles, styled_table as _styled_table, kpi_row as _kpi_row,
+)
 from reports.charts import (
     render_horizontal_bar_chart,
     render_line_chart,
@@ -39,117 +40,6 @@ from services.insights import generate_insights
 # ---------------------------------------------------------------------------
 
 _PAGE_WIDTH = A4[0]
-
-_DARK = colors.HexColor(PDF_TEXT_PRIMARY)
-_HEADER_BG = colors.HexColor(PDF_HEADER_BG)
-_BORDER = colors.HexColor(PDF_BORDER)
-_MUTED = colors.HexColor("#6B7280")
-_LIGHT_BG = colors.HexColor("#F9FAFB")
-
-
-def _build_styles():
-    """Return a dict of ParagraphStyles used throughout the report."""
-    base = getSampleStyleSheet()
-    return {
-        "title": ParagraphStyle(
-            "RTitle", parent=base["Heading1"], fontSize=22,
-            textColor=_DARK, spaceAfter=4, alignment=TA_LEFT,
-            fontName="Helvetica-Bold",
-        ),
-        "subtitle": ParagraphStyle(
-            "RSub", parent=base["Normal"], fontSize=11,
-            textColor=_MUTED, spaceAfter=6, alignment=TA_LEFT,
-        ),
-        "headline": ParagraphStyle(
-            "RHeadline", parent=base["Normal"], fontSize=13,
-            textColor=_DARK, spaceAfter=14, spaceBefore=10,
-            leading=18, fontName="Helvetica",
-        ),
-        "section": ParagraphStyle(
-            "RSection", parent=base["Heading2"], fontSize=14,
-            textColor=_DARK, spaceAfter=10, spaceBefore=16,
-            fontName="Helvetica-Bold",
-        ),
-        "body": ParagraphStyle(
-            "RBody", parent=base["Normal"], fontSize=10,
-            textColor=_DARK, spaceAfter=6,
-        ),
-        "caption": ParagraphStyle(
-            "RCaption", parent=base["Normal"], fontSize=9,
-            textColor=_MUTED, spaceAfter=10, spaceBefore=4,
-        ),
-        "bullet": ParagraphStyle(
-            "RBullet", parent=base["Normal"], fontSize=10,
-            textColor=_DARK, spaceAfter=5, leftIndent=16,
-            bulletIndent=4, bulletFontName="Helvetica", bulletFontSize=10,
-        ),
-        "footer_note": ParagraphStyle(
-            "RFooter", parent=base["Normal"], fontSize=9,
-            textColor=_MUTED, spaceBefore=20, alignment=TA_LEFT,
-        ),
-    }
-
-
-# ---------------------------------------------------------------------------
-# Table helper
-# ---------------------------------------------------------------------------
-
-def _styled_table(data, col_widths):
-    """Create a consistently styled table with header row."""
-    t = Table(data, colWidths=col_widths)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), _HEADER_BG),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("ALIGN", (0, 0), (0, -1), "LEFT"),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 11),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-        ("TOPPADDING", (0, 0), (-1, 0), 12),
-        ("BACKGROUND", (0, 1), (-1, -1), colors.white),
-        ("GRID", (0, 0), (-1, -1), 1, _BORDER),
-        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-        ("FONTSIZE", (0, 1), (-1, -1), 10),
-        ("TOPPADDING", (0, 1), (-1, -1), 10),
-        ("BOTTOMPADDING", (0, 1), (-1, -1), 10),
-        ("LEFTPADDING", (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-    ]))
-    return t
-
-
-def _kpi_row(labels_values):
-    """Render a single-row table of 2-3 KPI cards.
-
-    *labels_values* is a list of (label, value_string) tuples.
-    """
-    header = [lv[0] for lv in labels_values]
-    values = [lv[1] for lv in labels_values]
-    n = len(labels_values)
-    col_w = 6.5 * inch / n
-
-    t = Table([header, values], colWidths=[col_w] * n)
-    t.setStyle(TableStyle([
-        # Header row
-        ("BACKGROUND", (0, 0), (-1, 0), _HEADER_BG),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 9),
-        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-        ("TOPPADDING", (0, 0), (-1, 0), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-        # Value row
-        ("BACKGROUND", (0, 1), (-1, 1), colors.white),
-        ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 1), (-1, 1), 16),
-        ("ALIGN", (0, 1), (-1, 1), "CENTER"),
-        ("TOPPADDING", (0, 1), (-1, 1), 12),
-        ("BOTTOMPADDING", (0, 1), (-1, 1), 12),
-        ("TEXTCOLOR", (0, 1), (-1, 1), _DARK),
-        # Grid
-        ("GRID", (0, 0), (-1, -1), 1, _BORDER),
-    ]))
-    return t
 
 
 # ---------------------------------------------------------------------------
@@ -559,7 +449,7 @@ def generate(df, min_date, max_date, selected_category, selected_product,
         rightMargin=0.7 * inch,
     )
     story = []
-    sty = _build_styles()
+    sty = build_base_styles()
 
     days_span = (max_date - min_date).days + 1
 
