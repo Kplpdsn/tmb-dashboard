@@ -214,6 +214,8 @@ def _write_multi_week(product_summary, week_ranges, weekly_data, total_rev):
     bold_font = Font(bold=True)
     # Alternating week tint: odd weeks white (no fill), even weeks light grey
     week_tint = PatternFill(start_color="F0F0F0", end_color="F0F0F0", fill_type="solid")
+    # Summary columns tint: light blue-grey
+    total_tint = PatternFill(start_color="EBF0F5", end_color="EBF0F5", fill_type="solid")
 
     wb = Workbook()
     ws = wb.active
@@ -284,10 +286,15 @@ def _write_multi_week(product_summary, week_ranges, weekly_data, total_rev):
                 qty_cell.fill = week_tint
 
         tc = total_start_col
-        ws.cell(row_num, tc, prod["total_revenue"]).number_format = '$#,##0.00'
-        ws.cell(row_num, tc + 1, prod["total_quantity"]).number_format = '#,##0'
-        ws.cell(row_num, tc + 2, prod["avg_price"]).number_format = '$#,##0.00'
-        ws.cell(row_num, tc + 3, prod["pct_revenue"]).number_format = '0.0%'
+        for col_offset, (val, fmt) in enumerate([
+            (prod["total_revenue"], '$#,##0.00'),
+            (prod["total_quantity"], '#,##0'),
+            (prod["avg_price"], '$#,##0.00'),
+            (prod["pct_revenue"], '0.0%'),
+        ]):
+            c = ws.cell(row_num, tc + col_offset, val)
+            c.number_format = fmt
+            c.fill = total_tint
 
     # --- TOTAL row using SUBTOTAL formulas ---
     data_last_row = data_start_row + len(product_summary) - 1
