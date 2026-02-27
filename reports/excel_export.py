@@ -4,7 +4,8 @@ from io import BytesIO
 
 import pandas as pd
 from openpyxl.styles import Alignment, Font, PatternFill
-from openpyxl.utils import get_column_letter
+
+from config import PDF_HEADER_BG
 
 
 def generate_excel(filtered_df, min_date, max_date):
@@ -21,7 +22,10 @@ def generate_excel(filtered_df, min_date, max_date):
     product_summary["avg_price"] = (
         product_summary["total_revenue"] / product_summary["total_quantity"].replace(0, float("nan"))
     )
-    product_summary["pct_revenue"] = product_summary["total_revenue"] / total_rev if total_rev else 0
+    if total_rev:
+        product_summary["pct_revenue"] = product_summary["total_revenue"] / total_rev
+    else:
+        product_summary["pct_revenue"] = 0.0
 
     # Sort by revenue descending
     product_summary = product_summary.sort_values("total_revenue", ascending=False).reset_index(drop=True)
@@ -48,7 +52,8 @@ def generate_excel(filtered_df, min_date, max_date):
             ws.column_dimensions[letter].width = width
 
         # -- Header styling --
-        header_fill = PatternFill(start_color="4B5563", end_color="4B5563", fill_type="solid")
+        header_color = PDF_HEADER_BG.lstrip("#")
+        header_fill = PatternFill(start_color=header_color, end_color=header_color, fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF")
         for cell in ws[1]:
             cell.fill = header_fill
@@ -74,7 +79,7 @@ def generate_excel(filtered_df, min_date, max_date):
 
         # -- Freeze header row + auto-filter --
         ws.freeze_panes = "A2"
-        ws.auto_filter.ref = f"A1:F{ws.max_row - 1}"
+        ws.auto_filter.ref = f"A1:F{totals_row - 1}"
 
     buf.seek(0)
     return buf
