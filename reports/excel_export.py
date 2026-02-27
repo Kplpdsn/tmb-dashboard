@@ -110,10 +110,13 @@ def generate_avg_day_excel(filtered_df, selected_day_name, selected_category="Al
         return buf
 
     # --- Aggregate: daily totals per product, then average across days ---
+    # Use calendar date only (Date column may contain timestamps)
+    df["_date"] = df["Date"].dt.date
     daily_product = (
-        df.groupby(["Date", "Description", "Category"], as_index=False)
+        df.groupby(["_date", "Description", "Category"], as_index=False)
         .agg(revenue=("Revenue", "sum"), quantity=("Quantity", "sum"))
     )
+    df.drop(columns="_date", inplace=True)
     avg_product = (
         daily_product.groupby(["Description", "Category"], as_index=False)
         .agg(avg_revenue=("revenue", "mean"), avg_quantity=("quantity", "mean"))
