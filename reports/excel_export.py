@@ -207,9 +207,13 @@ def _write_multi_week(product_summary, week_ranges, weekly_data, total_rev):
     total_start_col = week_start_col + num_weeks * 2
     total_col_names = ["Total Revenue", "Total Quantity", "Avg Price", "% of Revenue"]
 
+    last_col = total_start_col + len(total_col_names) - 1
+
     header_fill, header_font, center = _header_styles()
     sub_header_font = Font(bold=True, color="FFFFFF", size=9)
     bold_font = Font(bold=True)
+    # Alternating week tint: odd weeks white (no fill), even weeks light grey
+    week_tint = PatternFill(start_color="F0F0F0", end_color="F0F0F0", fill_type="solid")
 
     wb = Workbook()
     ws = wb.active
@@ -241,7 +245,7 @@ def _write_multi_week(product_summary, week_ranges, weekly_data, total_rev):
         cell.fill = header_fill
         cell.alignment = center
 
-    # --- Row 2: Rev / Qty sub-headers ---
+    # --- Row 2: Rev / Qty sub-headers (tinted for even weeks) ---
     for i in range(num_weeks):
         col = week_start_col + i * 2
         for offset, label in enumerate(["Rev", "Qty"]):
@@ -249,6 +253,10 @@ def _write_multi_week(product_summary, week_ranges, weekly_data, total_rev):
             cell.font = sub_header_font
             cell.fill = header_fill
             cell.alignment = center
+            # Even-week merged header also gets tint on row 1
+        if i % 2 == 1:
+            ws.cell(1, col).fill = PatternFill(start_color="5A6370", end_color="5A6370", fill_type="solid")
+            ws.cell(1, col + 1).fill = PatternFill(start_color="5A6370", end_color="5A6370", fill_type="solid")
 
     # --- Build product -> weekly lookup ---
     weekly_lookup = {}
@@ -267,8 +275,13 @@ def _write_multi_week(product_summary, week_ranges, weekly_data, total_rev):
         for i, wr in enumerate(week_ranges):
             col = week_start_col + i * 2
             rev, qty = prod_weeks.get(wr, (0, 0))
-            ws.cell(row_num, col, rev).number_format = '$#,##0'
-            ws.cell(row_num, col + 1, qty).number_format = '#,##0'
+            rev_cell = ws.cell(row_num, col, rev)
+            rev_cell.number_format = '$#,##0'
+            qty_cell = ws.cell(row_num, col + 1, qty)
+            qty_cell.number_format = '#,##0'
+            if i % 2 == 1:
+                rev_cell.fill = week_tint
+                qty_cell.fill = week_tint
 
         tc = total_start_col
         ws.cell(row_num, tc, prod["total_revenue"]).number_format = '$#,##0.00'
@@ -312,7 +325,8 @@ def _write_multi_week(product_summary, week_ranges, weekly_data, total_rev):
 
     # --- Freeze panes + auto-filter ---
     ws.freeze_panes = "A3"
-    ws.auto_filter.ref = f"A2:B{data_last_row}"
+    last_col_letter = get_column_letter(last_col)
+    ws.auto_filter.ref = f"A2:{last_col_letter}{data_last_row}"
 
     out = BytesIO()
     wb.save(out)
