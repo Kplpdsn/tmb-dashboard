@@ -13,6 +13,17 @@ def generate_excel(filtered_df, min_date, max_date):
 
     Returns a BytesIO buffer ready for st.download_button.
     """
+    if filtered_df.empty:
+        buf = BytesIO()
+        empty_df = pd.DataFrame(columns=[
+            "Product", "Category", "Total Revenue", "Total Quantity",
+            "Avg Price", "% of Revenue",
+        ])
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            empty_df.to_excel(writer, sheet_name="Product Sales", index=False)
+        buf.seek(0)
+        return buf
+
     # --- Aggregate by product ---
     product_summary = (
         filtered_df.groupby(["Description", "Category"], as_index=False)
@@ -85,7 +96,7 @@ def generate_excel(filtered_df, min_date, max_date):
     return buf
 
 
-def generate_avg_day_excel(filtered_df, selected_day_name, selected_category="All Categories", selected_months=None):
+def generate_avg_day_excel(filtered_df, selected_day_name, selected_months=None):
     """Build a formatted average-day product performance Excel workbook.
 
     Returns a BytesIO buffer ready for st.download_button.
@@ -111,13 +122,12 @@ def generate_avg_day_excel(filtered_df, selected_day_name, selected_category="Al
 
     # --- Aggregate: daily totals per product, then average across days ---
     # Use calendar date only (Date column may contain timestamps)
-    df["_date"] = df["Date"].dt.date
+    _date = df["Date"].dt.date
+    num_days = _date.nunique()
     daily_product = (
-        df.groupby(["_date", "Description", "Category"], as_index=False)
+        df.groupby([_date, "Description", "Category"], as_index=False)
         .agg(revenue=("Revenue", "sum"), quantity=("Quantity", "sum"))
     )
-    num_days = df["_date"].nunique()
-    df.drop(columns="_date", inplace=True)
 
     # Divide by total day instances (not just days each product appeared)
     total_product = (
@@ -152,7 +162,7 @@ def generate_avg_day_excel(filtered_df, selected_day_name, selected_category="Al
     })
 
     # --- Sample size context ---
-    num_instances = df["Date"].dt.date.nunique()
+    num_instances = num_days
     first_date = df["Date"].min().strftime("%d/%m/%Y")
     last_date = df["Date"].max().strftime("%d/%m/%Y")
     context_line = (
@@ -217,6 +227,14 @@ def generate_baskets_excel(filtered_df):
 
     Returns a BytesIO buffer ready for st.download_button.
     """
+    if filtered_df.empty:
+        buf = BytesIO()
+        empty_df = pd.DataFrame(columns=["Basket", "Date", "Items", "Total", "Products"])
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            empty_df.to_excel(writer, sheet_name="Baskets", index=False)
+        buf.seek(0)
+        return buf
+
     # --- Aggregate by basket ---
     baskets = (
         filtered_df.groupby("Basket_ID", as_index=False)

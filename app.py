@@ -222,26 +222,28 @@ if "df" in st.session_state and not st.session_state.df.empty:
 
         with export_cols[1]:
             date_str = f"{min_date.strftime('%Y%m%d')}_{max_date.strftime('%Y%m%d')}"
-            try:
-                if active_tool == "Typical Day":
-                    excel_buf = generate_avg_day_excel(
-                        filtered_df, selected_day, selected_category, selected_months,
-                    )
-                    excel_name = f"TMB_Avg_{selected_day}_{date_str}.xlsx"
-                elif active_tool == "Baskets":
-                    excel_buf = generate_baskets_excel(filtered_df)
-                    excel_name = f"TMB_Baskets_{date_str}.xlsx"
-                else:
-                    excel_buf = generate_excel(filtered_df, min_date, max_date)
-                    excel_name = f"TMB_Product_Sales_{date_str}.xlsx"
-                st.download_button(
-                    "Download Excel", data=excel_buf,
-                    file_name=excel_name,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="excel_export", use_container_width=True,
-                )
-            except Exception as e:
-                st.error(f"Excel generation failed: {e}")
+            if st.button("Generate Excel", type="primary", use_container_width=True):
+                with st.spinner("Generating Excel..."):
+                    try:
+                        if active_tool == "Typical Day":
+                            excel_buf = generate_avg_day_excel(
+                                filtered_df, selected_day, selected_months,
+                            )
+                            excel_name = f"TMB_Avg_{selected_day}_{date_str}.xlsx"
+                        elif active_tool == "Baskets":
+                            excel_buf = generate_baskets_excel(filtered_df)
+                            excel_name = f"TMB_Baskets_{date_str}.xlsx"
+                        else:
+                            excel_buf = generate_excel(filtered_df, min_date, max_date)
+                            excel_name = f"TMB_Product_Sales_{date_str}.xlsx"
+                        st.download_button(
+                            "Download Excel", data=excel_buf,
+                            file_name=excel_name,
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key="excel_export", use_container_width=True,
+                        )
+                    except Exception as e:
+                        st.error(f"Excel generation failed: {e}")
 
 
 # =====================================================================
