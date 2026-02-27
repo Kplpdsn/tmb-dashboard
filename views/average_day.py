@@ -160,8 +160,9 @@ def render(df, selected_day_name, selected_category="All Categories", selected_m
         st.subheader("Top Products")
         st.caption(f"Average daily revenue per product on {selected_day_name}s")
 
-        product_daily = day_df.groupby([day_df["Date"].dt.date, "Description"])["Revenue"].sum().reset_index()
-        avg_product = product_daily.groupby("Description")["Revenue"].mean().sort_values(ascending=True).tail(10)
+        num_days_chart = day_df["Date"].dt.date.nunique()
+        product_totals = day_df.groupby("Description")["Revenue"].sum()
+        avg_product = (product_totals / num_days_chart).sort_values(ascending=True).tail(10)
 
         fig = go.Figure()
         fig.add_trace(go.Bar(

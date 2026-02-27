@@ -176,15 +176,10 @@ def _build_context(df, day_df, selected_day_name, selected_category, selected_mo
         if not hourly_stats.empty else 0
     )
 
-    # Top product (average daily revenue)
-    product_daily = (
-        day_df.groupby([day_df["Date"].dt.date, "Description"])["Revenue"]
-        .sum().reset_index()
-    )
-    avg_product = (
-        product_daily.groupby("Description")["Revenue"]
-        .mean().sort_values(ascending=False)
-    )
+    # Top product (average daily revenue — total / num_days for consistency with Excel)
+    num_days_products = day_df["Date"].dt.date.nunique()
+    product_totals = day_df.groupby("Description")["Revenue"].sum()
+    avg_product = (product_totals / num_days_products).sort_values(ascending=False)
     top_product = avg_product.index[0] if len(avg_product) > 0 else "N/A"
     top_product_rev = avg_product.iloc[0] if len(avg_product) > 0 else 0
 
@@ -571,11 +566,8 @@ def _page_product_performance(ctx, day_df, styles):
     best = avg_product.head(10).reset_index()
     best.columns = ["Product", "AvgDailyRevenue"]
 
-    product_daily_units = (
-        day_df.groupby([day_df["Date"].dt.date, "Description"])["Quantity"]
-        .sum().reset_index()
-    )
-    avg_units_prod = product_daily_units.groupby("Description")["Quantity"].mean()
+    num_days_units = day_df["Date"].dt.date.nunique()
+    avg_units_prod = day_df.groupby("Description")["Quantity"].sum() / num_days_units
     best["AvgDailyUnits"] = best["Product"].map(avg_units_prod).fillna(0)
     avg_rev = ctx["avg_rev"]
     best["PctOfDay"] = (best["AvgDailyRevenue"] / avg_rev * 100) if avg_rev > 0 else 0
