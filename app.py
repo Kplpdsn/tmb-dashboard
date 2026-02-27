@@ -20,7 +20,7 @@ from components.filters import (
 from views import dashboard, basket, compare, average_day
 from reports.standard import generate as generate_pdf
 from reports.average_day import generate as generate_avg_day_pdf
-from reports.excel_export import generate_excel
+from reports.excel_export import generate_excel, generate_avg_day_excel, generate_baskets_excel
 
 
 # --- Page Config ---
@@ -237,10 +237,20 @@ if "df" in st.session_state and not st.session_state.df.empty:
             with export_cols[1]:
                 date_str = f"{min_date.strftime('%Y%m%d')}_{max_date.strftime('%Y%m%d')}"
                 try:
-                    excel_buf = generate_excel(filtered_df, min_date, max_date)
+                    if active_tool == "Typical Day":
+                        excel_buf = generate_avg_day_excel(
+                            filtered_df, selected_day, selected_category, selected_months,
+                        )
+                        excel_name = f"TMB_Avg_{selected_day}_{date_str}.xlsx"
+                    elif active_tool == "Baskets":
+                        excel_buf = generate_baskets_excel(filtered_df)
+                        excel_name = f"TMB_Baskets_{date_str}.xlsx"
+                    else:
+                        excel_buf = generate_excel(filtered_df, min_date, max_date)
+                        excel_name = f"TMB_Product_Sales_{date_str}.xlsx"
                     st.download_button(
                         "Download Excel", data=excel_buf,
-                        file_name=f"TMB_Product_Sales_{date_str}.xlsx",
+                        file_name=excel_name,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         key="excel_export", use_container_width=True,
                     )
