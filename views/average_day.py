@@ -2,13 +2,12 @@
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
 from config import (
     CHART_PRIMARY, CHART_POSITIVE, CHART_CONFIDENCE_BAND,
-    AVERAGE_DAY_ROLLING_WINDOW, DAY_NAMES_ORDERED, MONTH_NAMES,
+    AVERAGE_DAY_ROLLING_WINDOW, DAY_NAMES_ORDERED, MONTH_NAMES, PIE_COLORS,
 )
 
 
@@ -54,10 +53,9 @@ def render(df, selected_day_name, selected_category="All Categories", selected_m
         month_note = f" | Months: {', '.join(month_names)}"
 
     st.markdown(
-        f"<div style='background:#F0F4EF; border-left:4px solid {CHART_PRIMARY}; "
-        f"padding:12px 18px; border-radius:0 8px 8px 0; margin-bottom:16px;'>"
-        f"<strong>{num_instances} {selected_day_name}{'s' if num_instances != 1 else ''}</strong> analyzed "
-        f"({first_date.strftime('%d %b %Y')} to {last_date.strftime('%d %b %Y')}){month_note}"
+        f"<div class='tmb-insight' style='border-left-color:{CHART_PRIMARY};'>"
+        f"<p><strong>{num_instances} {selected_day_name}{'s' if num_instances != 1 else ''}</strong> analyzed "
+        f"({first_date.strftime('%d %b %Y')} to {last_date.strftime('%d %b %Y')}){month_note}</p>"
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -142,11 +140,9 @@ def render(df, selected_day_name, selected_category="All Categories", selected_m
     ))
     fig.update_layout(
         height=380, margin=dict(l=0, r=0, t=20, b=40),
-        xaxis=dict(title="Hour of Day", tickmode="linear", tick0=6, dtick=2,
-                   showgrid=True, gridcolor="rgba(0,0,0,0.05)"),
-        yaxis=dict(title="Revenue ($)", tickformat="$,.0f",
-                   showgrid=True, gridcolor="rgba(0,0,0,0.05)"),
-        plot_bgcolor="white", showlegend=True,
+        xaxis=dict(title="Hour of Day", tickmode="linear", tick0=6, dtick=2),
+        yaxis=dict(title="Revenue ($)", tickformat="$,.0f"),
+        showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
     )
     st.plotly_chart(fig, use_container_width=True)
@@ -169,7 +165,7 @@ def render(df, selected_day_name, selected_category="All Categories", selected_m
             y=avg_product.index, x=avg_product.values, orientation="h",
             marker_color=CHART_PRIMARY,
             text=[f"${v:,.0f}" for v in avg_product.values], textposition="outside",
-            textfont=dict(size=11, color="#5A6B5E"),
+            textfont=dict(size=11, color="#5E6556"),
             hovertemplate="<b>%{y}</b><br>Avg Daily: $%{x:,.0f}<extra></extra>",
         ))
         fig.update_layout(
@@ -221,14 +217,13 @@ def render(df, selected_day_name, selected_category="All Categories", selected_m
     fig.add_trace(go.Scatter(
         x=trend["Date"], y=slope * x_num + intercept,
         mode="lines", name="Trend",
-        line=dict(color="#D97706", width=1.5, dash="dash"),
+        line=dict(color="#B4642A", width=1.5, dash="dash"),
     ))
     fig.update_layout(
         height=350, margin=dict(l=0, r=0, t=20, b=40),
-        xaxis=dict(title="Date", showgrid=True, gridcolor="rgba(0,0,0,0.05)"),
-        yaxis=dict(title="Revenue ($)", tickformat="$,.0f",
-                   showgrid=True, gridcolor="rgba(0,0,0,0.05)"),
-        plot_bgcolor="white", showlegend=True,
+        xaxis=dict(title="Date", showgrid=True, gridcolor="rgba(35,40,31,0.08)"),
+        yaxis=dict(title="Revenue ($)", tickformat="$,.0f"),
+        showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
     )
     st.plotly_chart(fig, use_container_width=True)
@@ -253,10 +248,10 @@ def render(df, selected_day_name, selected_category="All Categories", selected_m
 
     # Highlight selected months if filter is active
     if selected_months:
-        colors = [CHART_POSITIVE if m in selected_months else "#D1D5DB"
+        colors = [CHART_POSITIVE if m in selected_months else "#D8D2C3"
                   for m in monthly_avg["MonthNum"]]
     else:
-        colors = [CHART_PRIMARY if v >= overall_avg else "#B0B8A8"
+        colors = [CHART_PRIMARY if v >= overall_avg else "#C4C9B6"
                   for v in monthly_avg["AvgRevenue"]]
 
     fig = go.Figure()
@@ -269,7 +264,7 @@ def render(df, selected_day_name, selected_category="All Categories", selected_m
         hovertemplate="<b>%{x}</b><br>Avg Revenue: $%{y:,.0f}<br>Instances: %{customdata}<extra></extra>",
     ))
     # Overall average line
-    fig.add_hline(y=overall_avg, line_dash="dash", line_color="#6B705C",
+    fig.add_hline(y=overall_avg, line_dash="dash", line_color="#5E6556",
                   annotation_text=f"Overall: ${overall_avg:,.0f}", annotation_position="top left")
     fig.update_layout(
         height=350, margin=dict(l=0, r=0, t=30, b=0),
@@ -311,7 +306,7 @@ def render(df, selected_day_name, selected_category="All Categories", selected_m
     # Highlight the selected day
     def _highlight_row(row):
         if row["Day"] == selected_day_name:
-            return [f"background-color: #E8F0E3; font-weight: bold;"] * len(row)
+            return [f"background-color: #EFEBDD; font-weight: bold;"] * len(row)
         return [""] * len(row)
 
     styled = display.style.apply(_highlight_row, axis=1).hide(axis="index")
@@ -333,7 +328,7 @@ def _render_category_pie(df, selected_category):
 
     fig = go.Figure(data=[go.Pie(
         labels=plot_data.index, values=plot_data.values, hole=0.5,
-        marker=dict(colors=px.colors.qualitative.Pastel),
+        marker=dict(colors=PIE_COLORS),
         texttemplate="%{percent}", textposition="inside",
         textfont=dict(size=11, color="white"),
         hovertemplate="<b>%{label}</b><br>$%{value:,.0f} - %{percent}<extra></extra>",

@@ -7,7 +7,14 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from config import BASKET_VALUE_BINS, BASKET_VALUE_LABELS, BASKET_ITEM_BINS, BASKET_ITEM_LABELS
+from config import (
+    BASKET_VALUE_BINS,
+    BASKET_VALUE_LABELS,
+    BASKET_ITEM_BINS,
+    BASKET_ITEM_LABELS,
+    CHART_PRIMARY,
+    CHART_SECONDARY,
+)
 from components.insight_card import render_insight as _insight_card
 
 
@@ -66,21 +73,19 @@ def render(df):
 def _render_hero_metrics(avg_val, avg_items, num_baskets, total_rev):
     """Top-level KPI cards."""
     metrics = [
-        ("AVG BASKET VALUE", f"${avg_val:.2f}"),
-        ("AVG ITEMS PER BASKET", f"{avg_items:.1f}"),
-        ("TOTAL BASKETS", f"{num_baskets:,}"),
-        ("TOTAL REVENUE", f"${total_rev:,.0f}"),
+        ("Avg Basket Value", f"${avg_val:.2f}"),
+        ("Avg Items per Basket", f"{avg_items:.1f}"),
+        ("Total Baskets", f"{num_baskets:,}"),
+        ("Total Revenue", f"${total_rev:,.0f}"),
     ]
     cols = st.columns(4)
     for col, (label, value) in zip(cols, metrics):
         with col:
             st.markdown(
                 f"""
-                <div style='text-align:center; padding:20px; background:#FFF;
-                            border-radius:6px; border:1px solid #E5E7EB;'>
-                    <p style='font-size:11px; color:#6B7280; margin:0; text-transform:uppercase;
-                              letter-spacing:0.5px; font-weight:600;'>{label}</p>
-                    <h1 style='font-size:36px; margin:10px 0; color:#1F2933; font-weight:700;'>{value}</h1>
+                <div class="tmb-stat">
+                    <p class="tmb-label">{label}</p>
+                    <p class="tmb-value">{value}</p>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -99,7 +104,7 @@ def _render_basket_distribution(basket_revenue):
     with chart_col:
         fig = go.Figure()
         fig.add_trace(go.Bar(
-            x=dist.index, y=dist.values, marker_color="#6B705C",
+            x=dist.index, y=dist.values, marker_color=CHART_PRIMARY,
             text=dist.values, textposition="outside",
             hovertemplate="<b>%{x}</b><br>Baskets: %{y}<extra></extra>",
         ))
@@ -133,7 +138,7 @@ def _render_items_per_transaction(basket_items, num_baskets):
     with chart_col:
         fig = go.Figure()
         fig.add_trace(go.Bar(
-            x=item_dist.index, y=item_dist.values, marker_color="#8B9A82",
+            x=item_dist.index, y=item_dist.values, marker_color=CHART_SECONDARY,
             text=item_dist.values, textposition="outside",
             hovertemplate="<b>%{x} items</b><br>Baskets: %{y}<extra></extra>",
         ))
@@ -164,7 +169,7 @@ def _render_product_penetration(df, num_baskets):
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
-        y=pen_df["Product"], x=pen_df["Penetration %"], orientation="h", marker_color="#6B705C",
+        y=pen_df["Product"], x=pen_df["Penetration %"], orientation="h", marker_color=CHART_PRIMARY,
         text=pen_df["Penetration %"].apply(lambda x: f"{x:.1f}%"), textposition="outside",
         hovertemplate="<b>%{y}</b><br>In %{x:.1f}% of baskets<extra></extra>",
     ))
@@ -233,7 +238,7 @@ def _render_category_penetration(df, num_baskets):
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
-        x=cat_pen["Category"], y=cat_pen["Penetration %"], marker_color="#8B9A82",
+        x=cat_pen["Category"], y=cat_pen["Penetration %"], marker_color=CHART_SECONDARY,
         text=cat_pen["Penetration %"].apply(lambda x: f"{x:.1f}%"), textposition="outside",
         hovertemplate="<b>%{x}</b><br>%{y:.1f}% of baskets<extra></extra>",
     ))
@@ -275,14 +280,13 @@ def _render_noteworthy_baskets(df, basket_revenue, avg_basket_value, total_reven
         max_item = details.nlargest(1, "Quantity").iloc[0]
         st.markdown(
             f"""
-            <div style='padding:15px; background:linear-gradient(135deg,#B5C99A 0%,#7D8570 100%);
-                        border-radius:10px; color:white;'>
-                <div style='font-size:14px; opacity:0.9;'>
-                    {max_item['Date'].strftime('%d %b %Y at %I:%M %p')}</div>
-                <div style='font-size:24px; font-weight:bold; margin:10px 0;'>
-                    {int(max_item['Quantity'])} Items &bull; ${max_item['Revenue']:,.2f}</div>
-                <div style='font-size:13px; opacity:0.95;'>
-                    {max_item['Description'][:100]}...</div>
+            <div class="tmb-insight" style="border-left-color:#48513E;">
+                <p class="tmb-tag" style="color:#48513E;">
+                    {max_item['Date'].strftime('%d %b %Y at %I:%M %p')}</p>
+                <p style="font-family:var(--font-display); font-size:24px; margin:2px 0 6px 0;">
+                    {int(max_item['Quantity'])} Items &bull; ${max_item['Revenue']:,.2f}</p>
+                <p style="font-size:12.5px; color:var(--ink-soft);">
+                    {max_item['Description'][:100]}...</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -304,15 +308,15 @@ def _render_noteworthy_baskets(df, basket_revenue, avg_basket_value, total_reven
 
         st.markdown(
             f"""
-            <div style='padding:12px; background:#F5F2ED; border-radius:8px; margin-top:15px;'>
-                <div style='font-size:11px; color:#1F2933; font-weight:600; margin-bottom:8px;'>INSIGHTS</div>
-                <div style='font-size:12px; color:#1F2933; line-height:1.6;'>
+            <div class="tmb-insight" style="margin-top:15px;">
+                <p class="tmb-tag">Insights</p>
+                <p style="font-size:12.5px; line-height:1.6;">
                     Top 10% baskets avg <strong>${top_10_baskets.mean():.0f}</strong><br>
                     Top 20% baskets drive <strong>{rev_concentration:.0f}%</strong> of revenue<br>
-                    {"High concentration - focus on retaining top customers"
+                    {"High concentration — focus on retaining top customers"
                      if rev_concentration > 50
                      else "Balanced customer base"}
-                </div>
+                </p>
             </div>
             """,
             unsafe_allow_html=True,

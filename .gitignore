@@ -2,9 +2,8 @@
 service_account.json
 *-service-account.json
 
-# Streamlit Secrets
+# Streamlit Secrets (theme config.toml stays tracked)
 .streamlit/secrets.toml
-.streamlit/
 
 # Python
 __pycache__/

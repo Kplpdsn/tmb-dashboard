@@ -7,7 +7,7 @@ import streamlit as st
 import base64
 
 from config import TMB_SALES_FOLDER_ID
-from styles import MAIN_CSS
+from styles import MAIN_CSS, register_plotly_theme
 from services.gdrive import get_service
 from components.header import render_header, render_date_banner
 from components.date_picker import render_date_picker
@@ -25,8 +25,13 @@ from reports.excel_export import generate_excel, generate_avg_day_excel, generat
 
 
 # --- Page Config ---
-st.set_page_config(page_title="Three Mills Analytics Pro", layout="wide", page_icon="\U0001F950")
+st.set_page_config(
+    page_title="Three Mills Bakery · Sales Intelligence",
+    layout="wide",
+    page_icon="\U0001F950",
+)
 st.markdown(MAIN_CSS, unsafe_allow_html=True)
+register_plotly_theme()
 
 # --- Header ---
 render_header()
@@ -251,39 +256,39 @@ elif service and st.session_state.get("folder_id"):
 # NO CONNECTION - Welcome screen
 # =====================================================================
 else:
-    st.markdown("### What You Can Do:")
+    st.markdown("### What You Can Do")
     feat = [
-        ("Morning Brief", "Revenue, trends & what's selling \u2014 all on one page"),
-        ("Typical Day Model", "Model a typical Monday, Tuesday, etc. from historical data"),
+        ("No. 01", "Morning Brief", "Revenue, trends and what's selling \u2014 all on one page."),
+        ("No. 02", "Typical Day Model", "Model a typical Monday, Tuesday, etc. from historical data."),
     ]
     cols = st.columns(2)
-    for col, (title, desc) in zip(cols, feat):
+    for col, (no, title, desc) in zip(cols, feat):
         with col:
             st.markdown(
                 f"""
-                <div style='padding:20px; background:linear-gradient(135deg,#B5C99A 0%,#7D8570 100%);
-                            border-radius:12px; text-align:center; height:180px;'>
-                    <h4 style='color:white; margin:0;'>{title}</h4>
-                    <p style='color:#FAF9F6; font-size:14px; margin-top:8px;'>{desc}</p>
+                <div class="tmb-feature">
+                    <p class="tmb-no">{no}</p>
+                    <h4>{title}</h4>
+                    <p>{desc}</p>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-    st.markdown("### Ready to Get Started?")
+    st.markdown("")
     st.info(
-        "**Sales data available from 29 May 2024 onwards.**\n\n"
-        "Connect Google Drive and select a date range to begin!"
+        "**Sales data available from 29 May 2024 onwards.** "
+        "Connect Google Drive and select a date range to begin."
     )
 
 
 # --- Footer ---
-st.markdown("---")
 st.markdown(
     """
-    <div style='text-align:center; padding:20px; color:#1F2933; font-size:13px;'>
-        <p style='margin:0;'><strong>TMB Harris Farm</strong> | Retail Sales Analytics Dashboard</p>
-        <p style='margin:5px 0 0 0; opacity:0.7;'>Created by Kapil Pudasaini</p>
+    <div class="tmb-rule-double" style="margin-top:30px;"></div>
+    <div class="tmb-footer">
+        <p class="tmb-brand">Three Mills Bakery &times; Harris Farm &middot; Sales Intelligence</p>
+        <p class="tmb-byline">Prepared by Kapil Pudasaini</p>
     </div>
     """,
     unsafe_allow_html=True,

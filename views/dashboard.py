@@ -9,7 +9,6 @@ Below the fold: navigation buttons for Average Day and Basket tools.
 """
 
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -24,6 +23,7 @@ from config import (
     CHART_PRIMARY,
     INSIGHT_TOP_PRODUCTS,
     INSIGHT_WEEKLY_AGGREGATE_DAYS,
+    PIE_COLORS,
 )
 from services.insights import (
     generate_yesterday_insights,
@@ -186,13 +186,7 @@ def _render_daily_bars(df):
         height=380,
         margin=dict(l=0, r=0, t=20, b=40),
         xaxis=dict(title="", tickangle=-45, showgrid=False),
-        yaxis=dict(
-            title="Revenue ($)",
-            tickformat="$,.0f",
-            showgrid=True,
-            gridcolor="rgba(0,0,0,0.05)",
-        ),
-        plot_bgcolor="white",
+        yaxis=dict(title="Revenue ($)", tickformat="$,.0f"),
         showlegend=False,
     )
     st.plotly_chart(fig, use_container_width=True)
@@ -237,13 +231,7 @@ def _render_weekly_bars(df):
         height=380,
         margin=dict(l=0, r=0, t=20, b=40),
         xaxis=dict(title="Week", showgrid=False),
-        yaxis=dict(
-            title="Revenue ($)",
-            tickformat="$,.0f",
-            showgrid=True,
-            gridcolor="rgba(0,0,0,0.05)",
-        ),
-        plot_bgcolor="white",
+        yaxis=dict(title="Revenue ($)", tickformat="$,.0f"),
         showlegend=False,
     )
     st.plotly_chart(fig, use_container_width=True)
@@ -293,7 +281,7 @@ def _render_top_products(df):
         marker_color=CHART_PRIMARY,
         text=[f"${r:,.0f}" for r in top["Revenue"]],
         textposition="outside",
-        textfont=dict(size=11, color="#5A6B5E"),
+        textfont=dict(size=11, color="#5E6556"),
         hovertemplate=(
             "<b>%{y}</b><br>"
             "$%{x:,.0f} \u2014 %{customdata} units<extra></extra>"
@@ -306,7 +294,6 @@ def _render_top_products(df):
         margin=dict(l=0, r=80, t=20, b=0),
         xaxis=dict(title="Revenue ($)", tickformat="$,.0f"),
         yaxis=dict(title="", tickfont=dict(size=10)),
-        plot_bgcolor="white",
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -323,10 +310,9 @@ def _render_category_or_product_mix(df, selected_category):
             plot_data = pd.concat([top6, pd.Series({"Others": other})])
         else:
             plot_data = top6
-        palette = px.colors.qualitative.Set2
     else:
         plot_data = df.groupby("Category")["Revenue"].sum().sort_values(ascending=False)
-        palette = px.colors.qualitative.Pastel
+    palette = PIE_COLORS
 
     fig = go.Figure(data=[go.Pie(
         labels=plot_data.index,

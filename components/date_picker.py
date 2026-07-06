@@ -74,10 +74,10 @@ def render_date_picker(service, folder_id):
             color = CHART_HIGHLIGHT
         elif days_stale <= 3:
             freshness = f"Last data: {days_stale} days ago ({latest.strftime('%d %b')})"
-            color = "#f59e0b"
+            color = "#B4642A"
         else:
             freshness = f"Last data: {days_stale} days ago ({latest.strftime('%d %b')})"
-            color = "#ef4444"
+            color = "#AC3B2A"
 
         st.info(avail_text)
         st.markdown(

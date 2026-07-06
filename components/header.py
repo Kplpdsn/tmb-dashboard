@@ -1,42 +1,45 @@
 """App header component."""
 
+from datetime import datetime
+
 import streamlit as st
 
 
 def render_header():
-    """Render the main application header."""
+    """Render the editorial masthead with double rule."""
+    dateline = datetime.now().strftime("%A %d %B %Y")
     st.markdown(
-        """
-        <div class="main-header">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                    <h1 class="main-title">TMB Harris Farm</h1>
-                    <p class="main-subtitle">TMB HARRIS RETAIL SALES ANALYTICS DASHBOARD</p>
-                </div>
+        f"""
+        <div class="tmb-masthead">
+            <div>
+                <p class="tmb-kicker">Three Mills Bakery &times; Harris Farm</p>
+                <h1>Sales <em>Intelligence</em></h1>
             </div>
+            <div class="tmb-dateline">{dateline}<br>Canberra, ACT</div>
         </div>
+        <div class="tmb-rule-double"></div>
         """,
         unsafe_allow_html=True,
     )
 
 
 def render_date_banner(min_date, max_date, days_span):
-    """Render the loaded-data date range banner."""
+    """Render the loaded-data reporting period strip."""
+    if min_date.date() == max_date.date():
+        dates = min_date.strftime("%A %d %B %Y")
+    elif min_date.year == max_date.year:
+        dates = f"{min_date.strftime('%d %B')} &mdash; {max_date.strftime('%d %B %Y')}"
+    else:
+        dates = f"{min_date.strftime('%d %B %Y')} &mdash; {max_date.strftime('%d %B %Y')}"
+
     st.markdown(
         f"""
-        <div style='background: linear-gradient(90deg, #7D8570 0%, #B5C99A 100%);
-                    padding: 20px 30px; border-radius: 12px; margin-bottom: 25px;
-                    box-shadow: 0 4px 15px rgba(125, 133, 112, 0.25);'>
-            <div style='display: flex; justify-content: space-between; align-items: center;'>
-                <div>
-                    <h3 style='color: white; margin: 0; font-family: Georgia, serif; font-size: 24px;'>
-                        {min_date.strftime('%d %B %Y')} &mdash; {max_date.strftime('%d %B %Y')}
-                    </h3>
-                    <p style='color: #FAF9F6; margin: 5px 0 0 0; opacity: 0.95; font-size: 14px;'>
-                        {days_span} day{'s' if days_span != 1 else ''} of data loaded
-                    </p>
-                </div>
+        <div class="tmb-edition">
+            <div>
+                <p class="tmb-label">Reporting Period</p>
+                <p class="tmb-dates">{dates}</p>
             </div>
+            <div class="tmb-days">{days_span} day{'s' if days_span != 1 else ''} of trading</div>
         </div>
         """,
         unsafe_allow_html=True,

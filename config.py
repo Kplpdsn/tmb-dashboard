@@ -18,31 +18,31 @@ BASKET_VALUE_LABELS = ["$0-15", "$15-30", "$30-50", "$50-100", "$100+"]
 BASKET_ITEM_BINS = [0, 1, 3, 5, 10, 1000]
 BASKET_ITEM_LABELS = ["1", "2-3", "4-5", "6-10", "10+"]
 
-# Chart colors
-CHART_PRIMARY = "#7D8570"
-CHART_SECONDARY = "#8B9A82"
-CHART_ACCENT = "#6B705C"
-CHART_HIGHLIGHT = "#5B8C5A"
-CHART_POSITIVE = "#5B8C5A"
-CHART_NEGATIVE = "#DC2626"
-CHART_NEUTRAL = "#4B5563"
+# Chart colors ("artisan ledger" palette — see styles.py)
+CHART_PRIMARY = "#6F7A64"    # sage
+CHART_SECONDARY = "#98A186"  # light sage
+CHART_ACCENT = "#B4642A"     # burnt caramel
+CHART_HIGHLIGHT = "#48513E"  # deep sage
+CHART_POSITIVE = "#4C7A46"
+CHART_NEGATIVE = "#AC3B2A"
+CHART_NEUTRAL = "#5E6556"
 
 # PDF colors
-PDF_HEADER_BG = "#4B5563"
-PDF_TEXT_PRIMARY = "#1F2933"
-PDF_BORDER = "#E5E7EB"
-PDF_POSITIVE = "#059669"
-PDF_NEGATIVE = "#DC2626"
+PDF_HEADER_BG = "#23281F"
+PDF_TEXT_PRIMARY = "#23281F"
+PDF_BORDER = "#E4DCCC"
+PDF_POSITIVE = "#4C7A46"
+PDF_NEGATIVE = "#AC3B2A"
 
-# Pie chart color palette
+# Pie chart color palette (muted, print-like)
 PIE_COLORS = [
-    "#4B5563", "#2563EB", "#DC2626", "#059669",
-    "#D97706", "#7C3AED", "#DB2777", "#0891B2",
+    "#48513E", "#B4642A", "#8C9478", "#D9B380",
+    "#5E6556", "#A45C48", "#71808C", "#C2B49A",
 ]
 
 # Semantic colors for UI
-COLOR_POSITIVE = "#5B8C5A"
-COLOR_NEGATIVE = "#C62828"
+COLOR_POSITIVE = "#4C7A46"
+COLOR_NEGATIVE = "#AC3B2A"
 
 # Average Day analysis
 DAY_NAMES_ORDERED = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -51,7 +51,7 @@ MONTH_NAMES = [
     "July", "August", "September", "October", "November", "December",
 ]
 AVERAGE_DAY_ROLLING_WINDOW = 4  # weeks for trend moving average
-CHART_CONFIDENCE_BAND = "rgba(125, 133, 112, 0.2)"  # std deviation band fill
+CHART_CONFIDENCE_BAND = "rgba(111, 122, 100, 0.18)"  # std deviation band fill
 
 # Insight engine thresholds
 INSIGHT_TREND_MIN_DAYS = 21       # need 21+ days for trend insights
