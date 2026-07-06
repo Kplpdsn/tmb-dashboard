@@ -162,7 +162,7 @@ def _add_best_worst_day(insights, df):
     pct_vs_avg = _safe_pct(best_rev - avg_rev, avg_rev)
 
     insights.append(
-        f"{best_date.strftime('%A %b %d')} was your strongest day "
+        f"{best_date.strftime('%A %d %b')} was your strongest day "
         f"at ${best_rev:,.0f} (+{pct_vs_avg:.0f}% vs average)."
     )
 

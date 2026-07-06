@@ -1,4 +1,4 @@
-"""Date range picker with presets for initial data loading."""
+"""Date picker with three modes: Yesterday, Custom Range, Specific Dates."""
 
 from datetime import datetime, timedelta
 
@@ -9,13 +9,55 @@ from config import FIRST_SALE_DATE, CHART_HIGHLIGHT
 from services.data_processor import process_gdrive_files, get_available_dates
 
 
+def _parse_specific_dates(text: str, available_dates: list) -> tuple[list, str | None]:
+    """Parse comma-separated DD/MM/YYYY dates from user input.
+
+    Returns (sorted_date_list, error_message).
+    """
+    if not text or not text.strip():
+        return [], "Enter at least one date"
+
+    today = datetime.now().date()
+    dates = []
+    errors = []
+
+    for part in text.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            dt = datetime.strptime(part, "%d/%m/%Y").date()
+        except ValueError:
+            errors.append(f"'{part}' — use DD/MM/YYYY format")
+            continue
+
+        if dt > today:
+            errors.append(f"'{part}' is in the future")
+        elif dt < FIRST_SALE_DATE:
+            errors.append(
+                f"'{part}' is before data availability "
+                f"({FIRST_SALE_DATE.strftime('%d/%m/%Y')})"
+            )
+        elif available_dates and dt not in available_dates:
+            errors.append(f"'{part}' — no data file found")
+        else:
+            dates.append(dt)
+
+    if errors:
+        return [], "**Invalid dates:**\n" + "\n".join(f"- {e}" for e in errors)
+    if not dates:
+        return [], "No valid dates entered"
+
+    return sorted(set(dates)), None
+
+
 def render_date_picker(service, folder_id):
-    """Render the date selection UI with presets. Loads data into session_state on submit."""
-    st.markdown("## Select Date Range to Load Data")
+    """Render the date selection UI. Loads data into session_state on submit."""
+    st.markdown("## Select Dates to Load")
 
     today = datetime.now().date()
 
-    # Data availability and freshness
+    # --- Data availability banner ---
     available_dates = get_available_dates(service, folder_id)
     if available_dates:
         latest = available_dates[-1]
@@ -24,20 +66,17 @@ def render_date_picker(service, folder_id):
         days_stale = (today - latest).days
 
         avail_text = (
-            f"Data available from **{earliest.strftime('%b %d, %Y')}** "
-            f"to **{latest.strftime('%b %d, %Y')}** ({total_days} days)"
+            f"Data available from **{earliest.strftime('%d %b %Y')}** "
+            f"to **{latest.strftime('%d %b %Y')}** ({total_days} days)"
         )
-        if days_stale == 0:
-            freshness = "Data is current (today)"
-            color = CHART_HIGHLIGHT
-        elif days_stale == 1:
-            freshness = "Last data: yesterday"
+        if days_stale <= 1:
+            freshness = "Data is current (today)" if days_stale == 0 else "Last data: yesterday"
             color = CHART_HIGHLIGHT
         elif days_stale <= 3:
-            freshness = f"Last data: {days_stale} days ago ({latest.strftime('%b %d')})"
+            freshness = f"Last data: {days_stale} days ago ({latest.strftime('%d %b')})"
             color = "#f59e0b"
         else:
-            freshness = f"Last data: {days_stale} days ago ({latest.strftime('%b %d')})"
+            freshness = f"Last data: {days_stale} days ago ({latest.strftime('%d %b')})"
             color = "#ef4444"
 
         st.info(avail_text)
@@ -46,95 +85,86 @@ def render_date_picker(service, folder_id):
             unsafe_allow_html=True,
         )
     else:
-        st.info(f"Sales data available from **May 29, 2024** onwards")
+        st.info("Sales data available from **29 May 2024** onwards")
 
-    # --- Yesterday button (prominent) ---
+    # --- Yesterday button ---
     yesterday = today - timedelta(days=1)
-    if st.button("View Yesterday's Sales", type="primary", use_container_width=True, key="quick_yesterday_top"):
+    if st.button(
+        "View Yesterday's Sales",
+        type="primary",
+        use_container_width=True,
+        key="quick_yesterday_top",
+    ):
         st.session_state._auto_load_start = yesterday
         st.session_state._auto_load_end = yesterday
 
-    # --- Quick presets (row 1) ---
-    st.markdown("**Quick Select:**")
-    cols = st.columns(5)
-    quick_presets = [
-        ("Today", today, today),
-        ("Last 7 Days", today - timedelta(days=6), today),
-        ("Last 30 Days", today - timedelta(days=29), today),
-        ("This Month", today.replace(day=1), today),
-        ("Last Month",
-         (today.replace(day=1) - timedelta(days=1)).replace(day=1),
-         today.replace(day=1) - timedelta(days=1)),
-    ]
-
-    for col, (label, start, end) in zip(cols, quick_presets):
-        with col:
-            if st.button(label, use_container_width=True, key=f"quick_{label}"):
-                st.session_state._auto_load_start = start
-                st.session_state._auto_load_end = end
-
-    # --- Reporting presets (row 2) ---
-    st.markdown("**Reporting Periods:**")
-    rcols = st.columns(4)
-
-    # Calculate quarter boundaries
-    current_q_month = ((today.month - 1) // 3) * 3 + 1
-    this_quarter_start = today.replace(month=current_q_month, day=1)
-    last_quarter_end = this_quarter_start - timedelta(days=1)
-    last_q_month = ((last_quarter_end.month - 1) // 3) * 3 + 1
-    last_quarter_start = last_quarter_end.replace(month=last_q_month, day=1)
-    ytd_start = today.replace(month=1, day=1)
-
-    reporting_presets = [
-        ("This Quarter", max(this_quarter_start, FIRST_SALE_DATE), today),
-        ("Last Quarter", max(last_quarter_start, FIRST_SALE_DATE), last_quarter_end),
-        ("YTD", max(ytd_start, FIRST_SALE_DATE), today),
-        ("Last 12 Months", max(today - timedelta(days=364), FIRST_SALE_DATE), today),
-    ]
-
-    for col, (label, start, end) in zip(rcols, reporting_presets):
-        with col:
-            if st.button(label, use_container_width=True, key=f"report_{label}"):
-                st.session_state._auto_load_start = start
-                st.session_state._auto_load_end = end
-
     st.markdown("---")
-    st.markdown("**Or Choose Custom Dates:**")
 
-    # Use auto-load dates as defaults if set by preset
-    default_start = st.session_state.get("_auto_load_start", st.session_state.get("preset_start", today - timedelta(days=6)))
-    default_end = st.session_state.get("_auto_load_end", st.session_state.get("preset_end", today))
+    # --- Two tabs: Range vs Specific Dates ---
+    tab_range, tab_specific = st.tabs(["Custom Date Range", "Specific Dates"])
 
-    dc1, dc2, dc3 = st.columns([2, 2, 1])
-    with dc1:
-        start_date = st.date_input(
-            "From Date",
-            value=default_start,
-            min_value=FIRST_SALE_DATE,
-            max_value=today,
-            help="Select start date (data available from May 29, 2024)",
+    with tab_range:
+        default_start = st.session_state.get(
+            "_auto_load_start", today - timedelta(days=6)
         )
-    with dc2:
-        end_date = st.date_input(
-            "To Date",
-            value=default_end,
-            min_value=start_date,
-            max_value=today,
-            help="Select end date",
-        )
-    with dc3:
-        st.markdown("<br>", unsafe_allow_html=True)
-        load_clicked = st.button("Load Data", type="primary", use_container_width=True)
+        default_end = st.session_state.get("_auto_load_end", today)
 
-    # Auto-load from preset click
-    auto_load = "_auto_load_start" in st.session_state and "_auto_load_end" in st.session_state
+        dc1, dc2, dc3 = st.columns([2, 2, 1])
+        with dc1:
+            start_date = st.date_input(
+                "From Date",
+                value=default_start,
+                min_value=FIRST_SALE_DATE,
+                max_value=today,
+                format="DD/MM/YYYY",
+                help="Select start date (data available from 29 May 2024)",
+            )
+        with dc2:
+            end_date = st.date_input(
+                "To Date",
+                value=default_end,
+                min_value=start_date,
+                max_value=today,
+                format="DD/MM/YYYY",
+                help="Select end date",
+            )
+        with dc3:
+            st.markdown("<br>", unsafe_allow_html=True)
+            range_load = st.button(
+                "Load Data", type="primary", use_container_width=True, key="load_range"
+            )
+
+    with tab_specific:
+        st.markdown(
+            "Enter dates separated by commas (DD/MM/YYYY). "
+            "Handy for comparing like-for-like days — e.g. the last 4 Saturdays."
+        )
+        dates_text = st.text_input(
+            "Dates",
+            placeholder="01/03/2026, 22/02/2026, 15/02/2026, 08/02/2026",
+            key="specific_dates_input",
+            label_visibility="collapsed",
+        )
+        specific_load = st.button(
+            "Load Specific Dates",
+            type="primary",
+            use_container_width=True,
+            key="load_specific",
+        )
+
+    # --- Auto-load from yesterday button ---
+    auto_load = (
+        "_auto_load_start" in st.session_state
+        and "_auto_load_end" in st.session_state
+    )
     if auto_load:
         start_date = st.session_state._auto_load_start
         end_date = st.session_state._auto_load_end
         del st.session_state._auto_load_start
         del st.session_state._auto_load_end
 
-    if load_clicked or auto_load:
+    # --- Execute load ---
+    if range_load or auto_load:
         with st.spinner("Loading data from Google Drive..."):
             df, error = process_gdrive_files(
                 service, folder_id, pd.Timestamp(start_date), pd.Timestamp(end_date)
@@ -144,7 +174,32 @@ def render_date_picker(service, folder_id):
             elif not df.empty:
                 st.session_state.df = df
                 st.session_state.data_loaded = True
-                st.success(f"Loaded {len(df):,} records from {df['Date'].nunique()} days!")
+                st.success(
+                    f"Loaded {len(df):,} records from {df['Date'].nunique()} days!"
+                )
                 st.rerun()
             else:
                 st.warning("No data found in selected range")
+
+    elif specific_load:
+        parsed_dates, parse_error = _parse_specific_dates(dates_text, available_dates)
+        if parse_error:
+            st.error(parse_error)
+        else:
+            with st.spinner(
+                f"Loading {len(parsed_dates)} specific dates from Google Drive..."
+            ):
+                df, error = process_gdrive_files(
+                    service, folder_id, specific_dates=parsed_dates
+                )
+                if error:
+                    st.error(error)
+                elif not df.empty:
+                    st.session_state.df = df
+                    st.session_state.data_loaded = True
+                    st.success(
+                        f"Loaded {len(df):,} records from {df['Date'].nunique()} days!"
+                    )
+                    st.rerun()
+                else:
+                    st.warning("No data found for the selected dates")

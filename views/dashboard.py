@@ -125,7 +125,7 @@ def _compute_weekday_deltas(df, latest_day_df, latest_date):
 def _render_yesterday_section(df, latest_day_df, latest_date, day_name):
     """Section A — latest day metrics + insights."""
     st.markdown(f"### {day_name}'s Numbers")
-    st.caption(latest_date.strftime("%A, %B %d, %Y"))
+    st.caption(latest_date.strftime("%A %d %B %Y"))
 
     delta_label, delta_values = _compute_weekday_deltas(df, latest_day_df, latest_date)
 
@@ -145,7 +145,7 @@ def _render_period_section(df, min_date, max_date, days_span):
     """Section B — period overview with metrics, chart, and insights."""
     st.markdown("### This Period")
     st.caption(
-        f"{min_date.strftime('%b %d, %Y')} \u2013 {max_date.strftime('%b %d, %Y')}  "
+        f"{min_date.strftime('%d %b %Y')} \u2013 {max_date.strftime('%d %b %Y')}  "
         f"({days_span} day{'s' if days_span != 1 else ''})"
     )
 
@@ -169,7 +169,7 @@ def _render_daily_bars(df):
     daily = daily.sort_values("Date")
     daily["DayName"] = daily["Date"].dt.day_name()
     daily["Label"] = (
-        daily["Date"].dt.strftime("%b %d")
+        daily["Date"].dt.strftime("%d %b")
         + " ("
         + daily["DayName"].str[:3]
         + ")"
@@ -199,18 +199,18 @@ def _render_daily_bars(df):
 
 
 def _render_weekly_bars(df):
-    """Bar chart with weekly aggregated bars (for 15+ day ranges)."""
+    """Bar chart with Monday-based weekly aggregated bars (for 15+ day ranges)."""
     tmp = df.copy()
-    start = tmp["Date"].min()
-    tmp["WeekNum"] = ((tmp["Date"] - start).dt.days // 7) + 1
+    # Group by ISO week (Monday start)
+    tmp["WeekStart"] = tmp["Date"].dt.normalize() - pd.to_timedelta(tmp["Date"].dt.weekday, unit="D")
 
-    weekly = tmp.groupby("WeekNum").agg(
+    weekly = tmp.groupby("WeekStart").agg(
         Revenue=("Revenue", "sum"),
         StartDate=("Date", "min"),
         EndDate=("Date", "max"),
-    ).reset_index()
+    ).reset_index().sort_values("WeekStart")
 
-    # Build readable labels like "Feb 3-9" or "Jan 28-Feb 3"
+    # Build readable labels like "3-9 Feb" or "28 Jan-3 Feb"
     labels = []
     for _, row in weekly.iterrows():
         s = row["StartDate"]
@@ -218,9 +218,9 @@ def _render_weekly_bars(df):
         s_month = s.strftime("%b")
         e_month = e.strftime("%b")
         if s_month != e_month:
-            labels.append(f"{s_month} {s.day}-{e_month} {e.day}")
+            labels.append(f"{s.day} {s_month}-{e.day} {e_month}")
         else:
-            labels.append(f"{s_month} {s.day}-{e.day}")
+            labels.append(f"{s.day}-{e.day} {s_month}")
     weekly["WeekLabel"] = labels
 
     fig = go.Figure()

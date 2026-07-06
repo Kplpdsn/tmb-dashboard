@@ -264,7 +264,7 @@ def _render_noteworthy_baskets(df, basket_revenue, avg_basket_value, total_reven
         st.markdown("#### Top 5 Largest Baskets (by Value)")
         top5 = details.nlargest(5, "Revenue")
         display = pd.DataFrame({
-            "Date": top5["Date"].dt.strftime("%b %d, %Y %I:%M %p"),
+            "Date": top5["Date"].dt.strftime("%d %b %Y %I:%M %p"),
             "Products": top5["Description"].str[:60] + "...",
             "Items": top5["Quantity"].astype(int),
             "Total": top5["Revenue"].apply(lambda x: f"${x:,.2f}"),
@@ -278,7 +278,7 @@ def _render_noteworthy_baskets(df, basket_revenue, avg_basket_value, total_reven
             <div style='padding:15px; background:linear-gradient(135deg,#B5C99A 0%,#7D8570 100%);
                         border-radius:10px; color:white;'>
                 <div style='font-size:14px; opacity:0.9;'>
-                    {max_item['Date'].strftime('%b %d, %Y at %I:%M %p')}</div>
+                    {max_item['Date'].strftime('%d %b %Y at %I:%M %p')}</div>
                 <div style='font-size:24px; font-weight:bold; margin:10px 0;'>
                     {int(max_item['Quantity'])} Items &bull; ${max_item['Revenue']:,.2f}</div>
                 <div style='font-size:13px; opacity:0.95;'>

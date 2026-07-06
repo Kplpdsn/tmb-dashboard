@@ -65,12 +65,6 @@ if "df" in st.session_state and not st.session_state.df.empty:
         with st.sidebar:
             st.warning(f"{len(other_products)} product(s) categorized as 'Other': {', '.join(other_products[:5])}")
 
-    # Category manager in sidebar
-    with st.sidebar:
-        with st.expander("Manage Categories"):
-            from components.category_manager import render_category_manager
-            render_category_manager()
-
     min_date = df["Date"].min()
     max_date = df["Date"].max()
     days_span = (max_date - min_date).days + 1
@@ -278,7 +272,7 @@ else:
 
     st.markdown("### Ready to Get Started?")
     st.info(
-        "**Sales data available from May 29, 2024 onwards.**\n\n"
+        "**Sales data available from 29 May 2024 onwards.**\n\n"
         "Connect Google Drive and select a date range to begin!"
     )
 

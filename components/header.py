@@ -30,7 +30,7 @@ def render_date_banner(min_date, max_date, days_span):
             <div style='display: flex; justify-content: space-between; align-items: center;'>
                 <div>
                     <h3 style='color: white; margin: 0; font-family: Georgia, serif; font-size: 24px;'>
-                        {min_date.strftime('%B %d, %Y')} &mdash; {max_date.strftime('%B %d, %Y')}
+                        {min_date.strftime('%d %B %Y')} &mdash; {max_date.strftime('%d %B %Y')}
                     </h3>
                     <p style='color: #FAF9F6; margin: 5px 0 0 0; opacity: 0.95; font-size: 14px;'>
                         {days_span} day{'s' if days_span != 1 else ''} of data loaded

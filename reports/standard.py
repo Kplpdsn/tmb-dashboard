@@ -55,10 +55,10 @@ def _page_executive_brief(story, sty, df, min_date, max_date, days_span,
     story.append(Paragraph("TMB Harris Farm \u2014 Sales Report", sty["title"]))
 
     if days_span == 1:
-        period_str = min_date.strftime("%A, %B %d, %Y")
+        period_str = min_date.strftime("%A %d %B %Y")
     else:
         period_str = (
-            f"{min_date.strftime('%B %d, %Y')} to {max_date.strftime('%B %d, %Y')} "
+            f"{min_date.strftime('%d %B %Y')} to {max_date.strftime('%d %B %Y')} "
             f"({days_span} days)"
         )
     story.append(Paragraph(period_str, sty["subtitle"]))
@@ -122,7 +122,7 @@ def _page_executive_brief(story, sty, df, min_date, max_date, days_span,
         sty["footer_note"],
     ))
     story.append(Spacer(1, 0.1 * inch))
-    gen_ts = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    gen_ts = datetime.now().strftime("%d %B %Y at %I:%M %p")
     story.append(Paragraph(
         f"Generated {gen_ts}",
         ParagraphStyle("TS", parent=sty["caption"], fontSize=8,
@@ -180,10 +180,10 @@ def _page_revenue_detail(story, sty, df, min_date, max_date, days_span):
 
         if days_span <= 14:
             story.append(Paragraph("Day-by-day revenue", sty["caption"]))
-            labels = [d.strftime("%a %m/%d") for d in daily["Date"]]
+            labels = [d.strftime("%a %d/%m") for d in daily["Date"]]
         else:
             story.append(Paragraph("Daily revenue trend", sty["caption"]))
-            labels = [d.strftime("%m/%d") for d in daily["Date"]]
+            labels = [d.strftime("%d/%m") for d in daily["Date"]]
 
         chart = render_line_chart(labels, [daily["Revenue"].tolist()], width=450, height=200)
         story.append(chart)
@@ -195,7 +195,7 @@ def _page_revenue_detail(story, sty, df, min_date, max_date, days_span):
             pct = row["Revenue"] / total_rev * 100 if total_rev > 0 else 0
             if row["Revenue"] > 0:
                 table_data.append([
-                    row["Date"].strftime("%a %b %d") if days_span <= 14 else row["Date"].strftime("%m/%d"),
+                    row["Date"].strftime("%a %d %b") if days_span <= 14 else row["Date"].strftime("%d/%m"),
                     f"${row['Revenue']:,.2f}",
                     f"{pct:.1f}%",
                 ])

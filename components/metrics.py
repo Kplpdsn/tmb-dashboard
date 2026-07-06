@@ -70,7 +70,7 @@ def render_period_metrics(df):
     if len(daily_rev) > 0:
         best_date = daily_rev.idxmax()
         best_rev = daily_rev.max()
-        best_label = best_date.strftime("%a %b %d")
+        best_label = best_date.strftime("%a %d %b")
     else:
         best_rev = 0
         best_label = None

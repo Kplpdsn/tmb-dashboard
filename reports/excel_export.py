@@ -71,12 +71,38 @@ def _build_weekly_product_data(df, week_ranges):
 
 
 def _week_label(start, end):
-    """Format a week range like 'Feb 1-7' or 'Jan 28-Feb 1'."""
+    """Format a week range like '1-7 Feb' or '28 Jan-1 Feb'."""
     s_month = start.strftime("%b")
     e_month = end.strftime("%b")
     if s_month != e_month:
-        return f"{s_month} {start.day}-{e_month} {end.day}"
-    return f"{s_month} {start.day}-{end.day}"
+        return f"{start.day} {s_month}-{end.day} {e_month}"
+    return f"{start.day}-{end.day} {s_month}"
+
+
+# ---------------------------------------------------------------------------
+# Day helpers (single-week with 2+ days)
+# ---------------------------------------------------------------------------
+
+def _compute_day_ranges(dates):
+    """Return (date, date) pairs for each unique calendar date when 2+ days exist.
+
+    Normalises timestamps to midnight so time-of-day is ignored.
+    Returns an empty list if fewer than 2 unique dates.
+    """
+    if dates.empty:
+        return []
+
+    s = dates if isinstance(dates, pd.Series) else dates.to_series()
+    unique_dates = sorted(s.dt.normalize().unique())
+    if len(unique_dates) < 2:
+        return []
+
+    return [(pd.Timestamp(d), pd.Timestamp(d)) for d in unique_dates]
+
+
+def _day_label(start, end):
+    """Format a day label like 'Wed 28 Feb'."""
+    return start.strftime("%a") + f" {start.day} " + start.strftime("%b")
 
 
 # ---------------------------------------------------------------------------
@@ -99,8 +125,10 @@ def _header_styles():
 def generate_excel(filtered_df, min_date, max_date):
     """Build a formatted product sales summary Excel workbook.
 
-    For 2+ weeks: adds per-week Rev/Qty columns with merged headers.
-    For single week: flat layout (Product, Category, totals).
+    Layout routing:
+    - 2+ weeks: per-week Rev/Qty columns with merged headers.
+    - 1 week, 2+ days: per-day Rev/Qty columns with merged headers.
+    - 1 day: flat layout (Product, Category, totals).
 
     Returns a BytesIO buffer ready for st.download_button.
     """
@@ -131,14 +159,23 @@ def generate_excel(filtered_df, min_date, max_date):
 
     product_summary = product_summary.sort_values("total_revenue", ascending=False).reset_index(drop=True)
 
-    # --- Check for multi-week ---
+    # --- Route: multi-week → multi-day → flat ---
     week_ranges = _compute_week_ranges(filtered_df["Date"])
 
-    if not week_ranges:
-        return _write_single_week(product_summary, total_rev)
-    else:
+    if week_ranges:
         weekly_data = _build_weekly_product_data(filtered_df, week_ranges)
         return _write_multi_week(product_summary, week_ranges, weekly_data, total_rev)
+
+    day_ranges = _compute_day_ranges(filtered_df["Date"])
+    if day_ranges:
+        # Normalise dates to midnight so the >= / <= filter in
+        # _build_weekly_product_data matches day-level ranges correctly.
+        daily_df = filtered_df.copy()
+        daily_df["Date"] = daily_df["Date"].dt.normalize()
+        daily_data = _build_weekly_product_data(daily_df, day_ranges)
+        return _write_multi_week(product_summary, day_ranges, daily_data, total_rev, label_fn=_day_label)
+
+    return _write_single_week(product_summary, total_rev)
 
 
 # ---------------------------------------------------------------------------
@@ -200,8 +237,14 @@ def _write_single_week(product_summary, total_rev):
 # Multi-week layout
 # ---------------------------------------------------------------------------
 
-def _write_multi_week(product_summary, week_ranges, weekly_data, total_rev):
-    """Write the multi-week layout with merged week headers."""
+def _write_multi_week(product_summary, week_ranges, weekly_data, total_rev, label_fn=None):
+    """Write the multi-period layout with merged headers.
+
+    Works for both weekly and daily breakdowns. Pass label_fn to control
+    how each period header is formatted (defaults to _week_label).
+    """
+    if label_fn is None:
+        label_fn = _week_label
     num_weeks = len(week_ranges)
     week_start_col = 3  # column C
     total_start_col = week_start_col + num_weeks * 2
@@ -231,7 +274,7 @@ def _write_multi_week(product_summary, week_ranges, weekly_data, total_rev):
 
     for i, (start, end) in enumerate(week_ranges):
         col = week_start_col + i * 2
-        label = _week_label(start, end)
+        label = label_fn(start, end)
         ws.merge_cells(start_row=1, start_column=col, end_row=1, end_column=col + 1)
         cell = ws.cell(1, col, label)
         cell.font = header_font
@@ -457,14 +500,35 @@ def generate_avg_day_excel(filtered_df, selected_day_name, selected_months=None)
 # Baskets Excel
 # ---------------------------------------------------------------------------
 
+def _basket_products_with_qty(group):
+    """Build a product list with quantities, e.g. 'CROISSANT (2), SOURDOUGH (1)'."""
+    counts = group.groupby("Description")["Quantity"].sum().astype(int)
+    parts = []
+    for product in sorted(counts.index):
+        qty = counts[product]
+        if qty == 1:
+            parts.append(product)
+        else:
+            parts.append(f"{product} ({qty})")
+    return ", ".join(parts)
+
+
+def _basket_categories(group):
+    """Build a sorted, unique category list for a basket."""
+    return ", ".join(sorted(group["Category"].unique()))
+
+
 def generate_baskets_excel(filtered_df):
     """Build a formatted basket-level detail Excel workbook.
 
+    Columns: Date, Items, Total, Categories, Products
     Returns a BytesIO buffer ready for st.download_button.
     """
+    columns = ["Date", "Items", "Total", "Categories", "Products"]
+
     if filtered_df.empty:
         buf = BytesIO()
-        empty_df = pd.DataFrame(columns=["Basket", "Date", "Items", "Total", "Products"])
+        empty_df = pd.DataFrame(columns=columns)
         with pd.ExcelWriter(buf, engine="openpyxl") as writer:
             empty_df.to_excel(writer, sheet_name="Baskets", index=False)
         buf.seek(0)
@@ -476,50 +540,68 @@ def generate_baskets_excel(filtered_df):
             date=("Date", "first"),
             items=("Quantity", "sum"),
             total=("Revenue", "sum"),
-            products=("Description", lambda x: ", ".join(sorted(x.unique()))),
         )
     )
 
+    # Build products-with-qty and categories per basket
+    products_series = filtered_df.groupby("Basket_ID").apply(
+        _basket_products_with_qty, include_groups=False,
+    ).rename("products")
+    categories_series = filtered_df.groupby("Basket_ID").apply(
+        _basket_categories, include_groups=False,
+    ).rename("categories")
+
+    baskets = baskets.merge(products_series, left_on="Basket_ID", right_index=True)
+    baskets = baskets.merge(categories_series, left_on="Basket_ID", right_index=True)
+
+    baskets["items"] = baskets["items"].astype(int)
     baskets = baskets.sort_values(["date", "total"], ascending=[True, False]).reset_index(drop=True)
 
-    export_df = baskets.rename(columns={
-        "Basket_ID": "Basket",
-        "date": "Date",
-        "items": "Items",
-        "total": "Total",
-        "products": "Products",
-    })
+    export_df = baskets[["date", "items", "total", "categories", "products"]].copy()
+    export_df.columns = columns
 
     buf = BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as writer:
         export_df.to_excel(writer, sheet_name="Baskets", index=False)
         ws = writer.sheets["Baskets"]
 
-        col_widths = {"A": 18, "B": 14, "C": 10, "D": 14, "E": 50}
+        # Column widths: A=Date, B=Items, C=Total, D=Categories, E=Products
+        col_widths = {"A": 18, "B": 10, "C": 14, "D": 28, "E": 70}
         for letter, width in col_widths.items():
             ws.column_dimensions[letter].width = width
 
+        # Header styling
         header_fill, header_font, center = _header_styles()
         for cell in ws[1]:
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = center
 
-        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=5):
-            row[1].number_format = 'DD/MM/YYYY'
-            row[2].number_format = '#,##0'
-            row[3].number_format = '$#,##0.00'
+        # Alternating row tint
+        row_tint = PatternFill(start_color="F0F0F0", end_color="F0F0F0", fill_type="solid")
+        num_cols = 5
+        data_last_row = ws.max_row
+
+        for row_idx in range(2, data_last_row + 1):
+            # Number formats
+            ws.cell(row=row_idx, column=1).number_format = "DD/MM/YYYY HH:MM"
+            ws.cell(row=row_idx, column=2).number_format = "#,##0"
+            ws.cell(row=row_idx, column=3).number_format = "$#,##0.00"
+
+            # Alternating fill on even rows
+            if row_idx % 2 == 0:
+                for col_idx in range(1, num_cols + 1):
+                    ws.cell(row=row_idx, column=col_idx).fill = row_tint
 
         # TOTAL row with SUBTOTAL formulas
-        data_last_row = ws.max_row
         totals_row = data_last_row + 1
         bold_font = Font(bold=True)
         ws.cell(row=totals_row, column=1, value="TOTAL").font = bold_font
 
+        ws.cell(row=totals_row, column=2, value=f"=SUBTOTAL(9,B2:B{data_last_row})").font = bold_font
+        ws.cell(row=totals_row, column=2).number_format = "#,##0"
         ws.cell(row=totals_row, column=3, value=f"=SUBTOTAL(9,C2:C{data_last_row})").font = bold_font
-        ws.cell(row=totals_row, column=3).number_format = '#,##0'
-        ws.cell(row=totals_row, column=4, value=f"=SUBTOTAL(9,D2:D{data_last_row})").font = bold_font
-        ws.cell(row=totals_row, column=4).number_format = '$#,##0.00'
+        ws.cell(row=totals_row, column=3).number_format = "$#,##0.00"
 
         ws.freeze_panes = "A2"
         ws.auto_filter.ref = f"A1:E{data_last_row}"

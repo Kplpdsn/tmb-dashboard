@@ -269,7 +269,7 @@ def _page_story(ctx, styles):
 
     # Sample size line
     if pd.notna(first) and pd.notna(last):
-        date_range_str = f"{first.strftime('%b %d, %Y')} to {last.strftime('%b %d, %Y')}"
+        date_range_str = f"{first.strftime('%d %b %Y')} to {last.strftime('%d %b %Y')}"
     else:
         date_range_str = "N/A"
     story += [Paragraph(
@@ -601,7 +601,7 @@ def _page_conditional(ctx, day_df, df, selected_day_name, styles):
         n_labels = len(trend_data)
         step = max(1, n_labels // 10)
         for i, d in enumerate(trend_data["Date"]):
-            labels.append(d.strftime("%b %d") if i % step == 0 else "")
+            labels.append(d.strftime("%d %b") if i % step == 0 else "")
 
         chart = render_line_chart(
             labels=labels,

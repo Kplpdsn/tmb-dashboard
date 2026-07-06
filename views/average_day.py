@@ -57,7 +57,7 @@ def render(df, selected_day_name, selected_category="All Categories", selected_m
         f"<div style='background:#F0F4EF; border-left:4px solid {CHART_PRIMARY}; "
         f"padding:12px 18px; border-radius:0 8px 8px 0; margin-bottom:16px;'>"
         f"<strong>{num_instances} {selected_day_name}{'s' if num_instances != 1 else ''}</strong> analyzed "
-        f"({first_date.strftime('%b %d, %Y')} to {last_date.strftime('%b %d, %Y')}){month_note}"
+        f"({first_date.strftime('%d %b %Y')} to {last_date.strftime('%d %b %Y')}){month_note}"
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -209,7 +209,7 @@ def render(df, selected_day_name, selected_category="All Categories", selected_m
         x=trend["Date"], y=trend["Revenue"],
         mode="markers", name="Actual",
         marker=dict(size=8, color=CHART_PRIMARY, opacity=0.6),
-        hovertemplate="%{x|%b %d, %Y}<br>Revenue: $%{y:,.0f}<extra></extra>",
+        hovertemplate="%{x|%d %b %Y}<br>Revenue: $%{y:,.0f}<extra></extra>",
     ))
     # Rolling average
     fig.add_trace(go.Scatter(

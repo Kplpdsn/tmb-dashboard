@@ -1,6 +1,5 @@
 """Data loading, cleaning, category mapping, and processing."""
 
-import json
 import os
 import re
 from datetime import timedelta
@@ -40,55 +39,39 @@ def clean_product_name(name):
 # ---------------------------------------------------------------------------
 
 def _load_category_config():
-    """Load category mappings from CSV (preferred) or JSON fallback."""
+    """Load category mappings from category_config.csv."""
     base = os.path.dirname(os.path.dirname(__file__))
+    csv_path = os.path.join(base, "category_config.csv")
     try:
-        csv_path = os.path.join(base, "category_config.csv")
         if os.path.exists(csv_path):
             df = pd.read_csv(csv_path)
-            return dict(zip(df["Product"].str.strip(), df["Category"].str.strip()))
-        json_path = os.path.join(base, "category_config.json")
-        if os.path.exists(json_path):
-            with open(json_path, "r") as f:
-                return json.load(f)
-        st.warning("No category config found. Using keyword fallback only.")
+            return dict(zip(df["Product"].str.strip().str.upper(), df["Category"].str.strip()))
+        st.warning("category_config.csv not found. Using keyword fallback only.")
         return {}
     except Exception as e:
         st.error(f"Error loading category config: {e}")
         return {}
 
 
-@st.cache_data
-def get_category_mappings():
-    """Cached category mappings."""
-    return _load_category_config()
-
-
 def get_bakery_category(item):
-    """Categorize bakery items using config file + keyword fallback."""
+    """Categorize bakery items using CSV config + keyword fallback."""
     item = str(item).upper().strip()
     if not item or item in ("NAN", "BLANK"):
         return "Ignore"
 
     # Exact match from config
-    category_map = get_category_mappings()
+    category_map = _load_category_config()
     if item in category_map:
         return category_map[item]
 
-    # Keyword fallback
-    if any(k in item for k in ("BAKE AT HOME", "BAH", "S/ROLL", "CHEESY VEG", "SHARE PIE")):
+    # Keyword fallback for products not yet in CSV
+    if "BAH" in item or "BAKE AT HOME" in item or "S/ROLL" in item:
         return "Bake at Home"
-    if any(k in item for k in ("STOLLEN", "SALT & PEPPER BAGUETTE", "SALT AND PEPPER BAGUETTE")):
-        return "Weekend Special"
-    if any(k in item for k in ("SOURDOUGH", "BATARD", "BAGUETTE", "S/DOUGH")):
+    if "SOURDOUGH" in item or "BATARD" in item or "BAGUETTE" in item or "S/DOUGH" in item:
         return "XL Loaves" if "XL" in item else "Standard Loaves"
-    if any(k in item for k in ("DANISH", "CROISSANT", "SCROLL", "PASTRY", "ESCARGOT")):
+    if "CROISSANT" in item or "DANISH" in item or "ESCARGOT" in item or "SCROLL" in item:
         return "Pastries"
-    if any(k in item for k in ("FMT", "GINGER SNAP", "TART")):
-        return "FMT"
-    if any(k in item for k in ("COOKIE", "GRANOLA", "COFFEE", "REDBRICK", "HONEY", "BEYOND BREAD", "BAKERS OVEN")) or "B&B" in item:
-        return "Retail Items"
-    if any(k in item for k in ("BUN", "ROLL")):
+    if "BUN" in item or "ROLL" in item:
         return "Buns & Rolls"
     return "Other"
 
@@ -131,7 +114,7 @@ def _validate_date_range(files, start_date, end_date):
         return pd.DataFrame(), (
             f"**DATA INCOMPLETE - CANNOT PROCEED**\n\n"
             f"**Expected:** {expected_days} files "
-            f"({start_date.strftime('%b %d')} - {end_date.strftime('%b %d, %Y')})\n"
+            f"({start_date.strftime('%d %b')} - {end_date.strftime('%d %b %Y')})\n"
             f"**Found:** {len(file_dates_found)} files\n"
             f"**Missing dates:** {', '.join(missing)}\n\n"
             f"Check if files exist in Google Drive folder or select a different date range."
@@ -149,8 +132,58 @@ def _validate_date_range(files, start_date, end_date):
 
     st.success(
         f"**Data Complete:** All {expected_days} files found "
-        f"({start_date.strftime('%b %d')} - {end_date.strftime('%b %d, %Y')})"
+        f"({start_date.strftime('%d %b')} - {end_date.strftime('%d %b %Y')})"
     )
+    return filtered_files, None
+
+
+def _validate_specific_dates(files, specific_dates):
+    """Validate files exist for each requested specific date (non-continuous).
+
+    Returns (filtered_files, error_msg).
+    """
+    file_date_map: dict[str, list] = {}
+    for f in files:
+        file_date = extract_date_from_filename(f["name"])
+        if not file_date:
+            continue
+        date_key = file_date.date() if hasattr(file_date, "date") else file_date
+        file_date_map.setdefault(date_key, []).append(f)
+
+    filtered_files = []
+    missing = []
+    duplicates = {}
+
+    for dt in specific_dates:
+        if dt not in file_date_map:
+            missing.append(dt.strftime("%d %b %Y"))
+        else:
+            file_list = file_date_map[dt]
+            if len(file_list) > 1:
+                duplicates[dt.strftime("%Y-%m-%d")] = [f["name"] for f in file_list]
+            filtered_files.extend(file_list)
+
+    if missing:
+        return pd.DataFrame(), (
+            f"**DATA INCOMPLETE - CANNOT PROCEED**\n\n"
+            f"**Requested:** {len(specific_dates)} dates\n"
+            f"**Missing dates:** {', '.join(missing)}\n\n"
+            f"Check if files exist in Google Drive folder."
+        )
+
+    if duplicates:
+        dup_lines = "\n".join(
+            f"- **{d}**: {len(fl)} files - {', '.join(fl)}"
+            for d, fl in duplicates.items()
+        )
+        return pd.DataFrame(), (
+            f"**DUPLICATE FILES DETECTED - CANNOT PROCEED**\n\n"
+            f"**Duplicate dates:**\n{dup_lines}\n\n"
+            f"Remove duplicate files from Google Drive folder."
+        )
+
+    date_strs = [dt.strftime("%d %b") for dt in specific_dates]
+    st.success(f"**Data Complete:** All {len(specific_dates)} files found ({', '.join(date_strs)})")
     return filtered_files, None
 
 
@@ -212,14 +245,26 @@ def get_available_dates(service, folder_id):
     return sorted(set(dates))
 
 
-def process_gdrive_files(service, folder_id, start_date=None, end_date=None):
-    """Download and process files from Google Drive within the given date range."""
+def process_gdrive_files(service, folder_id, start_date=None, end_date=None, specific_dates=None):
+    """Download and process files from Google Drive.
+
+    Supports two modes:
+    - Range mode: start_date + end_date (continuous, all dates must exist)
+    - Specific mode: specific_dates list (non-continuous, only listed dates loaded)
+    """
     files = list_files_in_folder(service, folder_id, file_pattern=r"\d{8}")
     if not files:
         return pd.DataFrame(), "No files found in the folder"
 
-    # Validate date range
-    if start_date or end_date:
+    # Validate dates
+    if specific_dates:
+        files, error = _validate_specific_dates(files, specific_dates)
+        if error:
+            return pd.DataFrame(), error
+        # Use min/max for downstream date filtering in _build_dataframe
+        start_date = pd.Timestamp(min(specific_dates))
+        end_date = pd.Timestamp(max(specific_dates))
+    elif start_date or end_date:
         files, error = _validate_date_range(files, start_date, end_date)
         if error:
             return pd.DataFrame(), error
