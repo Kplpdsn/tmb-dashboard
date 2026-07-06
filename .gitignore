@@ -42,5 +42,15 @@ Desktop.ini
 .env.local
 .env.*.local
 
-# Claude Code
-.claude/
+# Analysis build artifacts
+analysis/*.xlsx
+analysis/*.parquet
+analysis/*.csv
+analysis/*.json
+
+# Generated reports
+reports/*.html
+
+# Claude Code local state (commands/ stays tracked)
+.claude/settings.local.json
+.claude/worktrees/
