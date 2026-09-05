@@ -24,7 +24,7 @@ from reports.average_day import generate as generate_avg_day_pdf
 from reports.excel_export import generate_excel, generate_avg_day_excel, generate_baskets_excel
 
 
-# --- Page Config ---
+# Page config
 st.set_page_config(
     page_title="Three Mills Bakery · Sales Intelligence",
     layout="wide",
@@ -33,10 +33,10 @@ st.set_page_config(
 st.markdown(MAIN_CSS, unsafe_allow_html=True)
 register_plotly_theme()
 
-# --- Header ---
+# Header
 render_header()
 
-# --- Google Drive Connection ---
+# Google Drive connection
 service, error = get_service()
 
 if service:
@@ -58,9 +58,7 @@ else:
         )
 
 
-# =====================================================================
-# DATA LOADED - Main dashboard
-# =====================================================================
+# Data loaded - main dashboard
 if "df" in st.session_state and not st.session_state.df.empty:
     df = st.session_state.df
 
@@ -245,16 +243,12 @@ if "df" in st.session_state and not st.session_state.df.empty:
                         st.error(f"Excel generation failed: {e}")
 
 
-# =====================================================================
-# NO DATA - Show date picker
-# =====================================================================
+# No data - show date picker
 elif service and st.session_state.get("folder_id"):
     render_date_picker(service, st.session_state.folder_id)
 
 
-# =====================================================================
-# NO CONNECTION - Welcome screen
-# =====================================================================
+# No connection - welcome screen
 else:
     st.markdown("### What You Can Do")
     feat = [
@@ -282,7 +276,7 @@ else:
     )
 
 
-# --- Footer ---
+# Footer
 st.markdown(
     """
     <div class="tmb-rule-double" style="margin-top:30px;"></div>

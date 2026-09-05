@@ -21,7 +21,7 @@ def extract_date_from_filename(filename):
     if match:
         try:
             return pd.to_datetime(match.group(1), format="%Y%m%d")
-        except Exception:
+        except ValueError:
             return None
     return None
 
@@ -48,7 +48,7 @@ def _load_category_config():
             return dict(zip(df["Product"].str.strip().str.upper(), df["Category"].str.strip()))
         st.warning("category_config.csv not found. Using keyword fallback only.")
         return {}
-    except Exception as e:
+    except (OSError, KeyError, pd.errors.ParserError) as e:
         st.error(f"Error loading category config: {e}")
         return {}
 
@@ -293,6 +293,8 @@ def process_gdrive_files(service, folder_id, start_date=None, end_date=None, spe
                 else:
                     df["Date"] = pd.NaT
                 all_data.append(df)
+            # Broad: one malformed file must not abort the whole batch, and
+            # openpyxl/xlrd raise a wide range of types on bad workbooks.
             except Exception as e:
                 st.warning(f"Could not process {f['name']}: {e}")
         progress.progress((idx + 1) / len(files))
@@ -328,6 +330,7 @@ def process_uploaded_files(uploaded_files):
             else:
                 df["Date"] = pd.NaT
             all_data.append(df)
+        # Broad for the same reason as load_data: skip the bad upload, keep the rest.
         except Exception as e:
             st.warning(f"Could not process {file.name}: {e}")
 

@@ -5,7 +5,9 @@ import os
 import re
 import streamlit as st
 from google.oauth2 import service_account
+from google.auth.exceptions import GoogleAuthError
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload
 
 from config import GDRIVE_SCOPES, SERVICE_ACCOUNT_FILE
@@ -21,7 +23,7 @@ def get_service():
             service = build("drive", "v3", credentials=credentials)
             return service, None
         return None, "Service account file not found. Add 'service_account.json' to your app folder."
-    except Exception as e:
+    except (OSError, ValueError, GoogleAuthError) as e:
         return None, f"Error connecting to Google Drive: {e}"
 
 
@@ -45,7 +47,7 @@ def list_files_in_folder(_service, folder_id, file_pattern=None):
         if file_pattern:
             files = [f for f in files if re.search(file_pattern, f["name"])]
         return files
-    except Exception as e:
+    except (HttpError, OSError) as e:
         st.error(f"Error listing files: {e}")
         return []
 
@@ -61,6 +63,6 @@ def download_file(service, file_id):
             _, done = downloader.next_chunk()
         file_buffer.seek(0)
         return file_buffer
-    except Exception as e:
+    except (HttpError, OSError) as e:
         st.error(f"Error downloading file: {e}")
         return None
